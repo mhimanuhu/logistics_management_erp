@@ -11,6 +11,12 @@ app.use(express.urlencoded({ extended: true }));
 const routes = require("./routes");
 app.use("/api", routes);
 
+// running route check 
+
+app.get("/", (req, res) => {
+  res.send("Backend is running");
+});
+
 // Server configuration
 const PORT = process.env.PORT || 5000;
 
