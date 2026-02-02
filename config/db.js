@@ -65,4 +65,4 @@ try {
   process.exit(1);
 }
 
-module.exports = pool.promise();
+module.exports = pool;
