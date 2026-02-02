@@ -17,7 +17,7 @@ try {
     console.log("Using manual MySQL configuration", {
       host: process.env.DB_HOST || "localhost",
       user: process.env.DB_USER || "root",
-      port: process.env.DB_PORT || 5003,
+      port: process.env.DB_PORT || 3306,
       database: process.env.DB_NAME || "logistics_db",
     });
 
@@ -26,7 +26,7 @@ try {
       user: process.env.DB_USER || "root",
       password: process.env.DB_PASSWORD || "root",
       database: process.env.DB_NAME || "logistics_db",
-      port: process.env.DB_PORT || 5003,
+      port: process.env.DB_PORT || 3306,
       connectionLimit: 10,
       waitForConnections: true,
       queueLimit: 0,
