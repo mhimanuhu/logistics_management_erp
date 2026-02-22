@@ -37,6 +37,21 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
+// Global error handler (e.g. multer/Cloudinary upload errors) – must be last
+app.use((err, req, res, next) => {
+  const isMulter = err.code && String(err.code).startsWith("LIMIT_");
+  const isUpload = err.message && /image|file|upload/i.test(err.message);
+  const status =
+    err.status ||
+    err.statusCode ||
+    (isMulter || isUpload ? 400 : 500);
+  const message =
+    err.message ||
+    (err.error && err.error.message) ||
+    (typeof err === "string" ? err : "Upload or server error");
+  res.status(status).json({ message });
+});
+
 // Server configuration
 const PORT = process.env.PORT || 5000;
 
