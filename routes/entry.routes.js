@@ -17,8 +17,8 @@ router.post("/", authMiddleware, upload.single("image"), entryController.createE
 // GET /api/entries - Get all entries
 router.get("/", authMiddleware, entryController.getEntries);
 
-// PUT /api/entries/:id - Update entry
-router.put("/:id", authMiddleware, entryController.updateEntry);
+// PUT /api/entries/:id - Update entry (with optional image upload)
+router.put("/:id", authMiddleware, upload.single("image"), entryController.updateEntry);
 
 // DELETE /api/entries/:id - Delete entry (SUPER_ADMIN only)
 router.delete("/:id", authMiddleware, entryController.deleteEntry);

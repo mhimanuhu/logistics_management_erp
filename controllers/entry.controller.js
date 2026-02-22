@@ -8,6 +8,22 @@ const STAFF_ALLOWED_FIELDS = [
   "status"
 ];
 
+// All columns that can be updated (for ADMIN/SUPER_ADMIN); excludes user_id, id
+const ALL_UPDATEABLE_FIELDS = [
+  "date", "exporter_name", "invoice_no", "container_no", "size",
+  "line", "line_seal", "custom_seal_no", "sb_no", "sb_date", "pod", "value", "pkgs",
+  "transporter", "vehicle_no", "shipping_bill_no", "shipping_bill_date",
+  "cha", "gst_no", "port", "factory_stuffing", "seal_charges",
+  "fumigation_charges_kpc_care", "empty_survey_report_master_marine",
+  "transport_charges", "handling_charges_transport_bill",
+  "detention_charges", "handling_charges_nk_yard",
+  "concor_freight_charges", "concor_handling_charges",
+  "gsp_fees", "image_path", "cloudinary_public_id", "gsp_making_charges",
+  "out_charges_handling", "labour_charges",
+  "examination_charges", "direct_stuffing_charges",
+  "ksl_invoice", "remarks", "status"
+];
+
 /**
  * Create Entry Controller
  * Creates a new logistic entry with optional image upload to Cloudinary
@@ -271,13 +287,20 @@ exports.updateEntry = (req, res) => {
   if (role === "USER") {
     // Staff limited edit
     const filteredUpdates = {};
-
     Object.keys(updates).forEach((key) => {
       if (STAFF_ALLOWED_FIELDS.includes(key)) {
         filteredUpdates[key] = updates[key];
       }
     });
-
+    updates = filteredUpdates;
+  } else {
+    // ADMIN/SUPER_ADMIN: only allow known columns (safe + works with multipart)
+    const filteredUpdates = {};
+    Object.keys(updates).forEach((key) => {
+      if (ALL_UPDATEABLE_FIELDS.includes(key)) {
+        filteredUpdates[key] = updates[key];
+      }
+    });
     updates = filteredUpdates;
   }
 
