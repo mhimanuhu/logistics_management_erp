@@ -2,7 +2,7 @@ const multer = require("multer");
 const cloudinary = require("../config/cloudinary");
 
 //  Node v22 + ESM-compatible import
-const CloudinaryStorage = require("multer-storage-cloudinary").default;
+const CloudinaryStorage = require("multer-storage-cloudinary").CloudinaryStorage;
 
 const storage = new CloudinaryStorage({
   cloudinary,
