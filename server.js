@@ -13,7 +13,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://logistics-management-frontend-iota.vercel.app/",
+      "https://logistics-management-frontend-iota.vercel.app",
       "https://logisticsmanagementerp-production.up.railway.app",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
