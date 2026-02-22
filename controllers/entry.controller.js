@@ -5,7 +5,9 @@ const cloudinary = require("../config/cloudinary");
 const STAFF_ALLOWED_FIELDS = [
   "remarks",
   "vehicle_no",
-  "status"
+  "status",
+  "image_path",
+  "cloudinary_public_id",
 ];
 
 // All columns that can be updated (for ADMIN/SUPER_ADMIN); excludes user_id, id
