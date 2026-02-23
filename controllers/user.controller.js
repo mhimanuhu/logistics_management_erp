@@ -98,7 +98,7 @@ exports.createUser = (req, res) => {
 
 /**
  * Delete User Controller (SUPER_ADMIN only)
- * Transfers deleted user's entries to the SUPER_ADMIN performing the delete, then deletes the user.
+ * Reassigns deleted user's logistic_entries and logs to the SUPER_ADMIN (avoids FK errors), then deletes the user.
  * Prevents SUPER_ADMIN from deleting their own account.
  */
 exports.deleteUser = (req, res) => {
@@ -126,21 +126,31 @@ exports.deleteUser = (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Transfer all entries created by this user to the SUPER_ADMIN performing the delete
-    const transferSql = "UPDATE logistic_entries SET user_id = ? WHERE user_id = ?";
-    db.query(transferSql, [superAdminId, userId], (err2) => {
+    // 1. Transfer logistic_entries to SUPER_ADMIN (avoid FK error on users.id)
+    const transferEntriesSql = "UPDATE logistic_entries SET user_id = ? WHERE user_id = ?";
+    db.query(transferEntriesSql, [superAdminId, userId], (err2) => {
       if (err2) {
         console.error("Transfer entries error:", err2);
         return res.status(500).json({ message: "Failed to transfer entries" });
       }
 
-      const deleteSql = "DELETE FROM users WHERE id = ?";
-      db.query(deleteSql, [userId], (err3) => {
-        if (err3) {
-          console.error("Delete user error:", err3);
-          return res.status(500).json({ message: "Failed to delete user" });
+      // 2. Reassign logs by this user to SUPER_ADMIN (avoid FK error on users.id)
+      const transferLogsSql = "UPDATE logs SET user_id = ? WHERE user_id = ?";
+      db.query(transferLogsSql, [superAdminId, userId], (errLogs) => {
+        if (errLogs) {
+          console.error("Transfer logs error:", errLogs);
+          return res.status(500).json({ message: "Failed to transfer logs" });
         }
-        res.json({ message: "User deleted successfully. Their entries have been transferred to you." });
+
+        // 3. Now safe to delete user (no remaining FK references)
+        const deleteSql = "DELETE FROM users WHERE id = ?";
+        db.query(deleteSql, [userId], (err3) => {
+          if (err3) {
+            console.error("Delete user error:", err3);
+            return res.status(500).json({ message: "Failed to delete user" });
+          }
+          res.json({ message: "User deleted successfully. Their entries and logs have been transferred to you." });
+        });
       });
     });
   });
