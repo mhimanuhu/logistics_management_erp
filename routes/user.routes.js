@@ -9,6 +9,8 @@ const allowRoles = require("../middleware/role.middleware");
  * All routes require authentication and SUPER_ADMIN privileges
  */
 
+// DELETE /api/users/:id - Delete user (SUPER_ADMIN only)
+router.delete("/:id", authMiddleware, allowRoles("SUPER_ADMIN"), userController.deleteUser);
 // GET /api/users - List all users (SUPER_ADMIN only)
 router.get("/", authMiddleware, allowRoles("SUPER_ADMIN"), userController.getUsers);
 

@@ -96,6 +96,24 @@ exports.createUser = (req, res) => {
   });
 };
 
+exists.deleteUser = (req , res) => {
+  const role = req.user.role;
+  if (role !== "SUPER_ADMIN") {
+    return res.status(403).json({ message: "Only SUPER_ADMIN can delete users" });
+  }
+  const userId = req.params.id;
+  const deleteSql = "DELETE FROM users WHERE id = ?";
+  db.query(deleteSql, [userId], (err) => {
+    if (err) {
+      console.error("Delete user error:", err);
+      return res.status(500).json({ message: "Failed to delete user" });
+    }
+    res.json({ message: "User deleted successfully" });
+  });
+};
+
+
+
 /**
  * Toggle User Active/Inactive Controller
  * Activates or deactivates a user (SUPER_ADMIN only)
