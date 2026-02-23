@@ -98,6 +98,7 @@ exports.createUser = (req, res) => {
 
 /**
  * Delete User Controller (SUPER_ADMIN only)
+ * Transfers deleted user's entries to the SUPER_ADMIN performing the delete, then deletes the user.
  * Prevents SUPER_ADMIN from deleting their own account.
  */
 exports.deleteUser = (req, res) => {
@@ -107,19 +108,41 @@ exports.deleteUser = (req, res) => {
   }
 
   const userId = req.params.id;
+  const superAdminId = req.user.id;
 
   // SUPER_ADMIN cannot delete themselves
-  if (parseInt(userId) === req.user.id) {
+  if (parseInt(userId) === superAdminId) {
     return res.status(400).json({ message: "You cannot delete your own account" });
   }
 
-  const deleteSql = "DELETE FROM users WHERE id = ?";
-  db.query(deleteSql, [userId], (err) => {
+  const checkSql = "SELECT id FROM users WHERE id = ?";
+
+  db.query(checkSql, [userId], (err, users) => {
     if (err) {
-      console.error("Delete user error:", err);
-      return res.status(500).json({ message: "Failed to delete user" });
+      console.error("Delete user check error:", err);
+      return res.status(500).json({ message: "Server error" });
     }
-    res.json({ message: "User deleted successfully" });
+    if (users.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Transfer all entries created by this user to the SUPER_ADMIN performing the delete
+    const transferSql = "UPDATE logistic_entries SET user_id = ? WHERE user_id = ?";
+    db.query(transferSql, [superAdminId, userId], (err2) => {
+      if (err2) {
+        console.error("Transfer entries error:", err2);
+        return res.status(500).json({ message: "Failed to transfer entries" });
+      }
+
+      const deleteSql = "DELETE FROM users WHERE id = ?";
+      db.query(deleteSql, [userId], (err3) => {
+        if (err3) {
+          console.error("Delete user error:", err3);
+          return res.status(500).json({ message: "Failed to delete user" });
+        }
+        res.json({ message: "User deleted successfully. Their entries have been transferred to you." });
+      });
+    });
   });
 };
 
