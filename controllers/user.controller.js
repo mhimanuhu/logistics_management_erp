@@ -96,12 +96,23 @@ exports.createUser = (req, res) => {
   });
 };
 
-exists.deleteUser = (req , res) => {
+/**
+ * Delete User Controller (SUPER_ADMIN only)
+ * Prevents SUPER_ADMIN from deleting their own account.
+ */
+exports.deleteUser = (req, res) => {
   const role = req.user.role;
   if (role !== "SUPER_ADMIN") {
     return res.status(403).json({ message: "Only SUPER_ADMIN can delete users" });
   }
+
   const userId = req.params.id;
+
+  // SUPER_ADMIN cannot delete themselves
+  if (parseInt(userId) === req.user.id) {
+    return res.status(400).json({ message: "You cannot delete your own account" });
+  }
+
   const deleteSql = "DELETE FROM users WHERE id = ?";
   db.query(deleteSql, [userId], (err) => {
     if (err) {
