@@ -9,6 +9,9 @@ const allowRoles = require("../middleware/role.middleware");
  * All routes require authentication and SUPER_ADMIN privileges
  */
 
+// GET /api/users - List all users (SUPER_ADMIN only)
+router.get("/", authMiddleware, allowRoles("SUPER_ADMIN"), userController.getUsers);
+
 // POST /api/users - Create new user (SUPER_ADMIN only)
 router.post("/", authMiddleware, allowRoles("SUPER_ADMIN"), userController.createUser);
 

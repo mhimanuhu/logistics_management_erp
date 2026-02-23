@@ -2,6 +2,30 @@ const bcrypt = require("bcryptjs");
 const db = require("../config/db");
 
 /**
+ * Get All Users (SUPER_ADMIN only)
+ * Returns list of users without password_hash
+ */
+exports.getUsers = (req, res) => {
+  if (req.user.role !== "SUPER_ADMIN") {
+    return res.status(403).json({ message: "Only SUPER_ADMIN can view users" });
+  }
+
+  const sql = `
+    SELECT id, name, email, role, is_active, created_at
+    FROM users
+    ORDER BY created_at DESC
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Fetch users error:", err);
+      return res.status(500).json({ message: "Failed to fetch users" });
+    }
+    res.json(results);
+  });
+};
+
+/**
  * Create User Controller
  * Creates new USER or DEV_ADMIN (SUPER_ADMIN only)
  */
