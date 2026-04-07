@@ -10,12 +10,14 @@ const upload = require("../middleware/upload.middleware");
  */
 // POST get entrie by id
 router.post("/:id", authMiddleware, entryController.getEntryById);
+// DONE
 
 // POST /api/entries - Create new entry (with optional image upload)
 router.post("/", authMiddleware, upload.single("image"), entryController.createEntry);
 
 // GET /api/entries - Get all entries
 router.get("/", authMiddleware, entryController.getEntries);
+// DONE
 
 // PUT /api/entries/:id - Update entry (with optional image upload)
 router.put("/:id", authMiddleware, upload.single("image"), entryController.updateEntry);

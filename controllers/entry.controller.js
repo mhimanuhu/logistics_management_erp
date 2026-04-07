@@ -10,7 +10,7 @@ const STAFF_ALLOWED_FIELDS = [
   "cloudinary_public_id",
 ];
 
-// All columns that can be updated (for ADMIN/SUPER_ADMIN); excludes user_id, id
+// All columns that can be updated (for ADMIN roles); excludes user_id, id
 const ALL_UPDATEABLE_FIELDS = [
   "date", "exporter_name", "invoice_no", "container_no", "size",
   "line", "line_seal", "custom_seal_no", "sb_no", "sb_date", "pod", "value", "pkgs",
@@ -173,21 +173,24 @@ exports.createEntry = (req, res) => {
 /**
  * Get Entries Controller
  * Fetches all logistic entries
- * SUPER_ADMIN and DEV_ADMIN see creator info, USER role doesn't
+ * SUPER_ADMIN and DEV_ADMIN see creator info + role via v_logistic_with_user view
+ * USER role sees raw entries only
  */
 exports.getEntries = (req, res) => {
   let sql = "";
   let values = [];
 
   if (req.user.role === "SUPER_ADMIN" || req.user.role === "DEV_ADMIN") {
-    // Admin/Dev can see staff name
+    // Admin/Dev can see staff name and role
     sql = `
-      SELECT 
+      SELECT
         le.*,
         u.name AS created_by_name,
-        u.email AS created_by_email
+        u.email AS created_by_email,
+        r.name AS created_by_role
       FROM logistic_entries le
       JOIN users u ON le.user_id = u.id
+      JOIN roles r ON r.id = u.role_id
       ORDER BY le.created_at DESC
     `;
   } else {
@@ -211,19 +214,24 @@ exports.getEntries = (req, res) => {
 
 // get entry by id
 exports.getEntryById = (req, res) => {
-  const entryId = req.params.id;
+  const entryId = parseInt(req.params.id, 10);
+  if (isNaN(entryId)) {
+    return res.status(400).json({ message: "Invalid entry ID" });
+  }
   let sql = "";
   let values = [entryId];
 
   if (req.user.role === "SUPER_ADMIN" || req.user.role === "DEV_ADMIN") {
-    // Admin / Dev can see who created the entry
+    // Admin / Dev can see who created the entry + their role
     sql = `
-      SELECT 
+      SELECT
         le.*,
         u.name AS created_by_name,
-        u.email AS created_by_email
+        u.email AS created_by_email,
+        r.name AS created_by_role
       FROM logistic_entries le
       JOIN users u ON le.user_id = u.id
+      JOIN roles r ON r.id = u.role_id
       WHERE le.id = ?
     `;
   } else {
@@ -259,9 +267,13 @@ exports.getEntryById = (req, res) => {
  * ADMIN roles can edit all fields
  */
 exports.updateEntry = (req, res) => {
-  const entryId = req.params.id;
+  const entryId = parseInt(req.params.id, 10);
   const userId = req.user.id;
   const role = req.user.role;
+
+  if (isNaN(entryId)) {
+    return res.status(400).json({ message: "Invalid entry ID" });
+  }
 
   let updates = req.body;
 
@@ -296,7 +308,7 @@ exports.updateEntry = (req, res) => {
     });
     updates = filteredUpdates;
   } else {
-    // ADMIN/SUPER_ADMIN: only allow known columns (safe + works with multipart)
+    // ADMIN/SUPER_ADMIN/DEV_ADMIN: only allow known columns
     const filteredUpdates = {};
     Object.keys(updates).forEach((key) => {
       if (ALL_UPDATEABLE_FIELDS.includes(key)) {
@@ -355,7 +367,10 @@ exports.deleteEntry = (req, res) => {
     return res.status(403).json({ message: "Only SUPER_ADMIN can delete entries" });
   }
 
-  const entryId = req.params.id;
+  const entryId = parseInt(req.params.id, 10);
+  if (isNaN(entryId)) {
+    return res.status(400).json({ message: "Invalid entry ID" });
+  }
 
   // Check entry exists and get image public_id
   const checkSql = "SELECT id, cloudinary_public_id FROM logistic_entries WHERE id = ?";
