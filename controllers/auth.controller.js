@@ -6,6 +6,8 @@ const db = require("../config/db");
  * Login Controller
  * Authenticates user with email and password
  * Returns JWT token on successful login
+ *
+ * Now JOINs the `roles` table to resolve role_id → role name
  */
 exports.login = (req, res) => {
   const { email, password } = req.body;
@@ -15,8 +17,14 @@ exports.login = (req, res) => {
     return res.status(400).json({ message: "Email and password required" });
   }
 
-  // Find user by email
-  const sql = "SELECT * FROM users WHERE email = ?";
+  // Find user by email — JOIN roles to get role name
+  const sql = `
+    SELECT u.*, r.name AS role
+    FROM users u
+    JOIN roles r ON r.id = u.role_id
+    WHERE u.email = ?
+  `;
+
   db.query(sql, [email], async (err, results) => {
     if (err) {
       console.error("DB error:", err);
@@ -41,7 +49,7 @@ exports.login = (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Generate JWT token
+    // Generate JWT token — role is the name string e.g. "SUPER_ADMIN"
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
@@ -56,7 +64,8 @@ exports.login = (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        role_id: user.role_id
       }
     });
   });

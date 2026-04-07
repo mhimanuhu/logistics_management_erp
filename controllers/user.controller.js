@@ -2,18 +2,37 @@ const bcrypt = require("bcryptjs");
 const db = require("../config/db");
 
 /**
- * Get All Users (SUPER_ADMIN only)
- * Returns list of users without password_hash
+ * Role-based creation permissions:
+ *   DEV_ADMIN   → can create SUPER_ADMIN, DEV_ADMIN, USER
+ *   SUPER_ADMIN → can create DEV_ADMIN, USER
+ *   USER        → cannot create anyone
  */
+const CREATION_PERMISSIONS = {
+  DEV_ADMIN: ["SUPER_ADMIN", "DEV_ADMIN", "USER"],
+  SUPER_ADMIN: ["DEV_ADMIN", "USER"],
+};
+
+// ─────────────────────────────────────────────────────────
+//  GET /api/users — List all users
+//  Accessible by SUPER_ADMIN and DEV_ADMIN
+// ─────────────────────────────────────────────────────────
 exports.getUsers = (req, res) => {
-  if (req.user.role !== "SUPER_ADMIN") {
-    return res.status(403).json({ message: "Only SUPER_ADMIN can view users" });
+  const role = req.user.role;
+
+  if (role !== "SUPER_ADMIN" && role !== "DEV_ADMIN") {
+    return res.status(403).json({ message: "Only admins can view users" });
   }
 
   const sql = `
-    SELECT id, name, email, role, is_active, created_at
-    FROM users
-    ORDER BY created_at DESC
+    SELECT
+      u.id, u.name, u.email,
+      r.name AS role, r.id AS role_id,
+      creator.name AS created_by,
+      u.is_active, u.created_at, u.updated_at
+    FROM users u
+    JOIN roles r ON r.id = u.role_id
+    LEFT JOIN users creator ON creator.id = u.created_by
+    ORDER BY u.created_at DESC
   `;
 
   db.query(sql, (err, results) => {
@@ -25,93 +44,135 @@ exports.getUsers = (req, res) => {
   });
 };
 
-/**
- * Create User Controller
- * Creates new USER or DEV_ADMIN (SUPER_ADMIN only)
- */
+// ─────────────────────────────────────────────────────────
+//  POST /api/users — Create a new user
+//  DEV_ADMIN  can create SUPER_ADMIN / DEV_ADMIN / USER
+//  SUPER_ADMIN can create DEV_ADMIN / USER
+// ─────────────────────────────────────────────────────────
 exports.createUser = (req, res) => {
-  const role = req.user.role;
+  const creatorRole = req.user.role;
+  const creatorId = req.user.id;
 
-  if (role !== "SUPER_ADMIN") {
-    return res.status(403).json({ message: "Only SUPER_ADMIN can create users" });
+  // Check if the creator role is allowed to create users at all
+  const allowedTargetRoles = CREATION_PERMISSIONS[creatorRole];
+  if (!allowedTargetRoles) {
+    return res.status(403).json({ message: "You are not allowed to create users" });
   }
 
-  const { name, email, password, role: newRole } = req.body;
+  const { name, email, password, role: newRoleName, role_id: directRoleId } = req.body;
 
-  if (!name || !email || !password || !newRole) {
-    return res.status(400).json({ message: "All fields required" });
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "Name, email and password are required" });
   }
 
-  if (!["USER", "DEV_ADMIN"].includes(newRole)) {
-    return res.status(400).json({ message: "Invalid role" });
-  }
+  // Resolve the target role — caller can pass either a role name or role_id
+  // If both provided, role name takes precedence
+  const resolveRole = (callback) => {
+    if (newRoleName) {
+      // Look up role_id by name
+      db.query("SELECT id, name FROM roles WHERE name = ? AND is_active = 1", [newRoleName], (err, rows) => {
+        if (err) return callback(err);
+        if (rows.length === 0) return callback(null, null, newRoleName);
+        callback(null, rows[0].id, rows[0].name);
+      });
+    } else if (directRoleId) {
+      // Look up role name by id
+      db.query("SELECT id, name FROM roles WHERE id = ? AND is_active = 1", [directRoleId], (err, rows) => {
+        if (err) return callback(err);
+        if (rows.length === 0) return callback(null, null, null);
+        callback(null, rows[0].id, rows[0].name);
+      });
+    } else {
+      return callback(null, null, null);
+    }
+  };
 
-  // Check if email already exists
-  const checkSql = "SELECT id FROM users WHERE email = ?";
-  db.query(checkSql, [email], async (err, results) => {
+  resolveRole((err, roleId, roleName) => {
     if (err) {
-      console.error("Check user error:", err);
+      console.error("Role lookup error:", err);
       return res.status(500).json({ message: "Server error" });
     }
 
-    if (results.length > 0) {
-      return res.status(400).json({ message: "Email already exists" });
+    if (!roleId || !roleName) {
+      return res.status(400).json({ message: "Valid role is required" });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Check if the creator is permitted to assign this role
+    if (!allowedTargetRoles.includes(roleName)) {
+      return res.status(403).json({
+        message: `${creatorRole} cannot create users with role ${roleName}`
+      });
+    }
 
-    const insertSql = `
-      INSERT INTO users (name, email, password_hash, role, is_active)
-      VALUES (?, ?, ?, ?, 1)
-    `;
-
-    db.query(
-      insertSql,
-      [name, email, hashedPassword, newRole],
-      (err, result) => {
-        if (err) {
-          console.error("Create user error:", err);
-          return res.status(500).json({ message: "Failed to create user" });
-        }
-
-        // Log action
-        const logSql = `
-          INSERT INTO logs (user_id, action, description)
-          VALUES (?, ?, ?)
-        `;
-
-        db.query(
-          logSql,
-          [req.user.id, "CREATE_USER", `Created user ${email} (${newRole})`],
-          () => {}
-        );
-
-        res.json({
-          message: "User created successfully",
-          user_id: result.insertId
-        });
+    // Check if email already exists
+    const checkSql = "SELECT id FROM users WHERE email = ?";
+    db.query(checkSql, [email], async (err, results) => {
+      if (err) {
+        console.error("Check user error:", err);
+        return res.status(500).json({ message: "Server error" });
       }
-    );
+
+      if (results.length > 0) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const insertSql = `
+        INSERT INTO users (role_id, created_by, name, email, password_hash, is_active)
+        VALUES (?, ?, ?, ?, ?, 1)
+      `;
+
+      db.query(
+        insertSql,
+        [roleId, creatorId, name, email, hashedPassword],
+        (err, result) => {
+          if (err) {
+            console.error("Create user error:", err);
+            return res.status(500).json({ message: "Failed to create user" });
+          }
+
+          // Log action
+          const logSql = `
+            INSERT INTO logs (user_id, action, description)
+            VALUES (?, ?, ?)
+          `;
+
+          db.query(
+            logSql,
+            [creatorId, "CREATE_USER", `Created user ${email} (${roleName})`],
+            () => {}
+          );
+
+          res.json({
+            message: "User created successfully",
+            user_id: result.insertId
+          });
+        }
+      );
+    });
   });
 };
 
-/**
- * Delete User Controller (SUPER_ADMIN only)
- * Reassigns deleted user's logistic_entries and logs to the SUPER_ADMIN (avoids FK errors), then deletes the user.
- * Prevents SUPER_ADMIN from deleting their own account.
- */
+// ─────────────────────────────────────────────────────────
+//  DELETE /api/users/:id — Delete user
+//  SUPER_ADMIN and DEV_ADMIN can delete users
+//  Transfers all FK-linked records to the admin performing
+//  the deletion to avoid FK constraint violations.
+// ─────────────────────────────────────────────────────────
 exports.deleteUser = (req, res) => {
   const role = req.user.role;
-  if (role !== "SUPER_ADMIN") {
-    return res.status(403).json({ message: "Only SUPER_ADMIN can delete users" });
+
+  if (role !== "SUPER_ADMIN" && role !== "DEV_ADMIN") {
+    return res.status(403).json({ message: "Only admins can delete users" });
   }
 
   const userId = req.params.id;
-  const superAdminId = req.user.id;
+  const adminId = req.user.id;
 
-  // SUPER_ADMIN cannot delete themselves
-  if (parseInt(userId) === superAdminId) {
+  // Cannot delete yourself
+  if (parseInt(userId) === adminId) {
     return res.status(400).json({ message: "You cannot delete your own account" });
   }
 
@@ -126,52 +187,92 @@ exports.deleteUser = (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // 1. Transfer logistic_entries to SUPER_ADMIN (avoid FK error on users.id)
+    // 1. Transfer logistic_entries to admin
     const transferEntriesSql = "UPDATE logistic_entries SET user_id = ? WHERE user_id = ?";
-    db.query(transferEntriesSql, [superAdminId, userId], (err2) => {
+    db.query(transferEntriesSql, [adminId, userId], (err2) => {
       if (err2) {
         console.error("Transfer entries error:", err2);
         return res.status(500).json({ message: "Failed to transfer entries" });
       }
 
-      // 2. Reassign logs by this user to SUPER_ADMIN (avoid FK error on users.id)
+      // 2. Reassign logs to admin
       const transferLogsSql = "UPDATE logs SET user_id = ? WHERE user_id = ?";
-      db.query(transferLogsSql, [superAdminId, userId], (errLogs) => {
+      db.query(transferLogsSql, [adminId, userId], (errLogs) => {
         if (errLogs) {
           console.error("Transfer logs error:", errLogs);
           return res.status(500).json({ message: "Failed to transfer logs" });
         }
 
-        // 3. Now safe to delete user (no remaining FK references)
-        const deleteSql = "DELETE FROM users WHERE id = ?";
-        db.query(deleteSql, [userId], (err3) => {
-          if (err3) {
-            console.error("Delete user error:", err3);
-            return res.status(500).json({ message: "Failed to delete user" });
+        // 3. Reassign customers.created_by
+        const transferCustomersSql = "UPDATE customers SET created_by = ? WHERE created_by = ?";
+        db.query(transferCustomersSql, [adminId, userId], (errCust) => {
+          if (errCust) {
+            console.error("Transfer customers error:", errCust);
+            return res.status(500).json({ message: "Failed to transfer customers" });
           }
-          res.json({ message: "User deleted successfully. Their entries and logs have been transferred to you." });
+
+          // 4. Reassign invoices.created_by
+          const transferInvoicesSql = "UPDATE invoices SET created_by = ? WHERE created_by = ?";
+          db.query(transferInvoicesSql, [adminId, userId], (errInv) => {
+            if (errInv) {
+              console.error("Transfer invoices error:", errInv);
+              return res.status(500).json({ message: "Failed to transfer invoices" });
+            }
+
+            // 5. Clear users.created_by self-references
+            const clearCreatedBySql = "UPDATE users SET created_by = NULL WHERE created_by = ?";
+            db.query(clearCreatedBySql, [userId], (errCb) => {
+              if (errCb) {
+                console.error("Clear created_by error:", errCb);
+                return res.status(500).json({ message: "Failed to clear created_by references" });
+              }
+
+              // 6. Now safe to delete user
+              const deleteSql = "DELETE FROM users WHERE id = ?";
+              db.query(deleteSql, [userId], (err3) => {
+                if (err3) {
+                  console.error("Delete user error:", err3);
+                  return res.status(500).json({ message: "Failed to delete user" });
+                }
+
+                // Log action
+                const logSql = `
+                  INSERT INTO logs (user_id, action, description)
+                  VALUES (?, ?, ?)
+                `;
+                db.query(
+                  logSql,
+                  [adminId, "DELETE_USER", `Deleted user ID ${userId}. Records transferred.`],
+                  () => {}
+                );
+
+                res.json({
+                  message: "User deleted successfully. Their entries, logs, customers and invoices have been transferred to you."
+                });
+              });
+            });
+          });
         });
       });
     });
   });
 };
 
-
-
-/**
- * Toggle User Active/Inactive Controller
- * Activates or deactivates a user (SUPER_ADMIN only)
- */
+// ─────────────────────────────────────────────────────────
+//  PATCH /api/users/:id/toggle-active
+//  Activates or deactivates a user
+//  SUPER_ADMIN and DEV_ADMIN can toggle
+// ─────────────────────────────────────────────────────────
 exports.toggleUserActive = (req, res) => {
   const role = req.user.role;
 
-  if (role !== "SUPER_ADMIN") {
-    return res.status(403).json({ message: "Only SUPER_ADMIN can change user status" });
+  if (role !== "SUPER_ADMIN" && role !== "DEV_ADMIN") {
+    return res.status(403).json({ message: "Only admins can change user status" });
   }
 
   const userId = req.params.id;
 
-  // SUPER_ADMIN cannot deactivate themselves
+  // Cannot deactivate yourself
   if (parseInt(userId) === req.user.id) {
     return res.status(400).json({ message: "You cannot deactivate yourself" });
   }

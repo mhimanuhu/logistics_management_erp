@@ -6,6 +6,9 @@ const authRoutes = require("./auth.routes");
 const entryRoutes = require("./entry.routes");
 const logRoutes = require("./log.routes");
 const userRoutes = require("./user.routes");
+const roleRoutes = require("./role.routes");
+const customerRoutes = require("./customer.routes");
+const invoiceRoutes = require("./invoice.routes");
 
 /**
  * Central Route Configuration
@@ -17,5 +20,8 @@ router.use("/auth", authRoutes);
 router.use("/entries", entryRoutes);
 router.use("/logs", logRoutes);
 router.use("/users", userRoutes);
+router.use("/roles", roleRoutes);
+router.use("/customers", customerRoutes);
+router.use("/invoices", invoiceRoutes);
 
 module.exports = router;
