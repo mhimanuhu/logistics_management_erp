@@ -13,8 +13,11 @@ const { uploadInvoiceFile } = require("../middleware/upload.middleware");
 // GET /api/invoices — List all invoices (with optional filters)
 router.get("/", authMiddleware, invoiceController.getInvoices);
 
-// GET /api/invoices/:id/pdf — Download invoice as PDF (?copy=ORIGINAL+COPY)
-router.get("/:id/pdf", authMiddleware, invoiceController.downloadInvoicePdf);
+// GET /api/invoices/summary/monthly — Total bill amount month-wise (?year=2026)
+router.get("/summary/monthly", authMiddleware, invoiceController.getMonthlyInvoiceSummary);
+
+// GET /api/invoices/:id/print — Get all dynamic data for bill printing
+router.get("/:id/print", authMiddleware, invoiceController.getInvoicePrintData);
 
 // GET /api/invoices/:id — Get single invoice with items
 router.get("/:id", authMiddleware, invoiceController.getInvoiceById);

@@ -1,15 +1,14 @@
 /**
  * Company / Billing Configuration
  * ──────────────────────────────────────────
- * All values here appear on the generated PDF invoice.
+ * All values here are returned by the /print API
+ * so your frontend bill template can use them.
  * Change them to match your business details.
- * In future these could come from a `settings` DB table.
  */
 
 module.exports = {
   // ── Company Identity ────────────────────────────
   company_name: "KRISHNAM SHIPPING LLP",
-  company_tagline: "",
   address_line1: "OFFICE NO.3, KHANDAL BHAWAN, GOKULPURA",
   address_line2: "NEAR ICD CONCOR",
   city: "JAIPUR",
@@ -22,6 +21,9 @@ module.exports = {
   phone: "9828013190",
   email: "satya.khandal19@gmail.com",
   website: "www.krishnamshipping.com",
+
+  // ── Logo URL (for frontend) ─────────────────────
+  logo_url: null, // Set your company logo URL here
 
   // ── Bank Details ────────────────────────────────
   bank_name: "ICICI Bank",
@@ -41,9 +43,4 @@ module.exports = {
     "18% Interest applicable for payment done after due date",
     "For any discrepancy please notify within 7 days of bill",
   ],
-
-  // ── Logo Path (absolute) ───────────────────────
-  // Set to null if no logo file, or provide an absolute path
-  // e.g. "C:/path/to/logo.png"
-  logo_path: null,
 };
