@@ -1,6 +1,6 @@
 const db = require("../config/db");
 const cloudinary = require("../config/cloudinary");
-const { generateInvoicePDF } = require("../utils/invoicePdf");
+const company = require("../config/company");
 
 // ─────────────────────────────────────────────────────────
 //  GET /api/invoices — List all invoices
@@ -59,12 +59,91 @@ exports.getInvoices = (req, res) => {
 
   sql += " ORDER BY i.created_at DESC";
 
-  db.query(sql, values, (err, results) => {
+  db.query(sql, values, (err, invoices) => {
     if (err) {
       console.error("Fetch invoices error:", err);
       return res.status(500).json({ message: "Failed to fetch invoices" });
     }
-    res.json(results);
+
+    if (invoices.length === 0) {
+      return res.json([]);
+    }
+
+    // Fetch items for all invoices in one query
+    const invoiceIds = invoices.map((inv) => inv.id);
+    const itemsSql = `
+      SELECT * FROM invoice_items
+      WHERE invoice_id IN (?)
+      ORDER BY invoice_id, sr_no ASC
+    `;
+
+    db.query(itemsSql, [invoiceIds], (itemErr, allItems) => {
+      if (itemErr) {
+        console.error("Fetch invoice items error:", itemErr);
+        // Return invoices without items rather than failing
+        return res.json(invoices.map((inv) => ({ ...inv, items: [] })));
+      }
+
+      // Group items by invoice_id
+      const itemsByInvoice = {};
+      allItems.forEach((item) => {
+        if (!itemsByInvoice[item.invoice_id]) {
+          itemsByInvoice[item.invoice_id] = [];
+        }
+        itemsByInvoice[item.invoice_id].push(item);
+      });
+
+      // Attach items to each invoice
+      const result = invoices.map((inv) => ({
+        ...inv,
+        items: itemsByInvoice[inv.id] || [],
+      }));
+
+      res.json(result);
+    });
+  });
+};
+
+// ─────────────────────────────────────────────────────────
+//  GET /api/invoices/summary/monthly — Total bill amount month-wise
+//  Optional: ?year=2026  (defaults to current year)
+// ─────────────────────────────────────────────────────────
+exports.getMonthlyInvoiceSummary = (req, res) => {
+  const year = parseInt(req.query.year, 10) || new Date().getFullYear();
+
+  const sql = `
+    SELECT
+      MONTH(invoice_date)                          AS month_number,
+      DATE_FORMAT(invoice_date, '%b %Y')           AS month_label,
+      COUNT(*)                                     AS total_invoices,
+      COALESCE(SUM(taxable_amount), 0)             AS total_taxable,
+      COALESCE(SUM(cgst_amount), 0)                AS total_cgst,
+      COALESCE(SUM(sgst_amount), 0)                AS total_sgst,
+      COALESCE(SUM(igst_amount), 0)                AS total_igst,
+      COALESCE(SUM(cgst_amount + sgst_amount + igst_amount), 0) AS total_tax,
+      COALESCE(SUM(total_amount), 0)               AS total_amount
+    FROM invoices
+    WHERE YEAR(invoice_date) = ?
+    GROUP BY MONTH(invoice_date), DATE_FORMAT(invoice_date, '%b %Y')
+    ORDER BY month_number ASC
+  `;
+
+  db.query(sql, [year], (err, results) => {
+    if (err) {
+      console.error("Monthly summary error:", err);
+      return res.status(500).json({ message: "Failed to fetch monthly summary" });
+    }
+
+    // Grand total for the year
+    const grandTotal = results.reduce((sum, row) => sum + parseFloat(row.total_amount), 0);
+    const grandInvoices = results.reduce((sum, row) => sum + row.total_invoices, 0);
+
+    res.json({
+      year,
+      grand_total_invoices: grandInvoices,
+      grand_total_amount: grandTotal,
+      months: results,
+    });
   });
 };
 
@@ -114,8 +193,12 @@ exports.getInvoiceById = (req, res) => {
         return res.status(500).json({ message: "Failed to fetch invoice items" });
       }
 
+      // Build computed fields
+      const inv = headerResults[0];
+      inv.full_invoice_no = (inv.invoice_prefix || "") + (inv.invoice_number || "");
+
       res.json({
-        ...headerResults[0],
+        ...inv,
         items
       });
     });
@@ -490,24 +573,22 @@ exports.deleteInvoice = (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────
-//  GET /api/invoices/:id/pdf — Download invoice as PDF
-//  Optional query param: ?copy=ORIGINAL+COPY
+//  GET /api/invoices/:id/print — Get all dynamic data for bill printing
+//  Returns: invoice + customer + items + company info + computed totals
 // ─────────────────────────────────────────────────────────
-exports.downloadInvoicePdf = async (req, res) => {
+exports.getInvoicePrintData = (req, res) => {
   const invoiceId = parseInt(req.params.id, 10);
   if (isNaN(invoiceId)) {
     return res.status(400).json({ message: "Invalid invoice ID" });
   }
 
-  const copyLabel = req.query.copy || "OFFICE COPY";
-
-  // Fetch invoice header + customer data
+  // Fetch invoice header + full customer data
   const headerSql = `
     SELECT
       i.*,
-      c.company_name, c.gstin, c.contact_person, c.contact_no,
+      c.company_name, c.gstin, c.company_type, c.contact_person, c.contact_no,
       c.email AS customer_email, c.registration_type, c.pan,
-      c.address_line1, c.address_line2, c.city, c.state, c.pincode,
+      c.address_line1, c.address_line2, c.landmark, c.city, c.state, c.pincode,
       u.name AS created_by_name
     FROM invoices i
     JOIN customers c ON c.id = i.customer_id
@@ -517,7 +598,7 @@ exports.downloadInvoicePdf = async (req, res) => {
 
   db.query(headerSql, [invoiceId], (err, headerResults) => {
     if (err) {
-      console.error("PDF fetch invoice error:", err);
+      console.error("Print fetch invoice error:", err);
       return res.status(500).json({ message: "Failed to fetch invoice" });
     }
 
@@ -525,33 +606,169 @@ exports.downloadInvoicePdf = async (req, res) => {
       return res.status(404).json({ message: "Invoice not found" });
     }
 
-    const invoice = headerResults[0];
+    const inv = headerResults[0];
 
     // Fetch invoice items
     db.query(
       "SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY sr_no ASC",
       [invoiceId],
-      async (itemErr, items) => {
+      (itemErr, items) => {
         if (itemErr) {
-          console.error("PDF fetch items error:", itemErr);
+          console.error("Print fetch items error:", itemErr);
           return res.status(500).json({ message: "Failed to fetch invoice items" });
         }
 
-        try {
-          const pdfBuffer = await generateInvoicePDF(invoice, items, copyLabel);
+        // ── Computed fields ──
+        const fullInvoiceNo = (inv.invoice_prefix || "") + (inv.invoice_number || "");
 
-          const fullInvoiceNo = (invoice.invoice_prefix || "") + (invoice.invoice_number || "");
-          const filename = `Invoice_${fullInvoiceNo.replace(/\//g, "_")}.pdf`;
+        const totalAmount = parseFloat(inv.total_amount) || 0;
+        const totalInWords = amountToWords(totalAmount);
 
-          res.setHeader("Content-Type", "application/pdf");
-          res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-          res.setHeader("Content-Length", pdfBuffer.length);
-          res.send(pdfBuffer);
-        } catch (pdfErr) {
-          console.error("PDF generation error:", pdfErr);
-          return res.status(500).json({ message: "Failed to generate PDF" });
-        }
+        // Customer full address
+        const customerAddress = [inv.address_line1, inv.address_line2, inv.landmark,
+          [inv.city, inv.state, inv.pincode].filter(Boolean).join(", ")
+        ].filter(Boolean).join(", ");
+
+        // Invoice type label
+        const invoiceTypeLabels = {
+          tax_invoice: "TAX INVOICE",
+          bill_of_supply: "BILL OF SUPPLY",
+          export_invoice: "EXPORT INVOICE",
+        };
+
+        // UPI payment string
+        const upiString = `upi://pay?pa=${company.bank_upi_id}&pn=${encodeURIComponent(company.company_name)}&am=${totalAmount}&cu=INR`;
+
+        res.json({
+          // ── Invoice header ──
+          invoice: {
+            id: inv.id,
+            full_invoice_no: fullInvoiceNo,
+            invoice_prefix: inv.invoice_prefix,
+            invoice_number: inv.invoice_number,
+            invoice_post: inv.invoice_post,
+            invoice_type: inv.invoice_type,
+            invoice_type_label: invoiceTypeLabels[inv.invoice_type] || "TAX INVOICE",
+            invoice_date: inv.invoice_date,
+            place_of_supply: inv.place_of_supply,
+            ship_to: inv.ship_to,
+            rev_charge: inv.rev_charge,
+            shipper: inv.shipper,
+            bl_no: inv.bl_no,
+            sbill_no: inv.sbill_no,
+            sbill_date: inv.sbill_date,
+            ref_invoice_no: inv.ref_invoice_no,
+            cont_no: inv.cont_no,
+            delivery_mode: inv.delivery_mode,
+            e_invoice_file: inv.e_invoice_file,
+            taxable_amount: inv.taxable_amount,
+            cgst_amount: inv.cgst_amount,
+            sgst_amount: inv.sgst_amount,
+            igst_amount: inv.igst_amount,
+            total_tax: inv.total_tax,
+            round_off: inv.round_off,
+            total_amount: inv.total_amount,
+            total_in_words: totalInWords,
+            status: inv.status,
+            remarks: inv.remarks,
+            created_by_name: inv.created_by_name,
+            created_at: inv.created_at,
+          },
+
+          // ── Customer info ──
+          customer: {
+            id: inv.customer_id,
+            company_name: inv.company_name,
+            company_type: inv.company_type,
+            gstin: inv.gstin,
+            pan: inv.pan,
+            contact_person: inv.contact_person,
+            contact_no: inv.contact_no,
+            email: inv.customer_email,
+            registration_type: inv.registration_type,
+            address_line1: inv.address_line1,
+            address_line2: inv.address_line2,
+            landmark: inv.landmark,
+            city: inv.city,
+            state: inv.state,
+            pincode: inv.pincode,
+            full_address: customerAddress,
+          },
+
+          // ── Line items ──
+          items: items,
+
+          // ── Company (your firm) ──
+          company: {
+            name: company.company_name,
+            address_line1: company.address_line1,
+            address_line2: company.address_line2,
+            city: company.city,
+            state: company.state,
+            pincode: company.pincode,
+            msme_no: company.msme_no,
+            gstin: company.gstin,
+            phone: company.phone,
+            email: company.email,
+            website: company.website,
+            logo_url: company.logo_url || null,
+          },
+
+          // ── Bank details ──
+          bank: {
+            name: company.bank_name,
+            branch: company.bank_branch,
+            acc_name: company.bank_acc_name,
+            acc_number: company.bank_acc_number,
+            ifsc: company.bank_ifsc,
+            upi_id: company.bank_upi_id,
+            upi_string: upiString,
+          },
+
+          // ── Terms & Conditions ──
+          terms: company.terms,
+        });
       }
     );
   });
 };
+
+// ─────────────────────────────────────────────────────────
+//  Helper: Convert amount to Indian Rupee words
+// ─────────────────────────────────────────────────────────
+function amountToWords(amount) {
+  const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
+    "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN",
+    "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
+  const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
+
+  function twoDigits(n) {
+    if (n < 20) return ones[n];
+    return tens[Math.floor(n / 10)] + (n % 10 ? "-" + ones[n % 10] : "");
+  }
+  function threeDigits(n) {
+    const h = Math.floor(n / 100), rest = n % 100;
+    if (h && rest) return ones[h] + " HUNDRED AND " + twoDigits(rest);
+    if (h) return ones[h] + " HUNDRED";
+    return twoDigits(rest);
+  }
+  function numberToWords(num) {
+    if (num === 0) return "ZERO";
+    const parts = [];
+    const crore = Math.floor(num / 10000000); num %= 10000000;
+    const lakh = Math.floor(num / 100000); num %= 100000;
+    const thousand = Math.floor(num / 1000); num %= 1000;
+    if (crore) parts.push(twoDigits(crore) + " CRORE");
+    if (lakh) parts.push(twoDigits(lakh) + " LAKH");
+    if (thousand) parts.push(twoDigits(thousand) + " THOUSAND");
+    if (num) parts.push(threeDigits(num));
+    return parts.join(" ");
+  }
+
+  const rupees = Math.floor(amount);
+  const paisa = Math.round((amount - rupees) * 100);
+  let result = numberToWords(rupees) + " RUPEES";
+  if (paisa > 0) result += " AND " + numberToWords(paisa) + " PAISA";
+  return result + " ONLY";
+}
+
