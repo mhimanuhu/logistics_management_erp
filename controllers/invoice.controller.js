@@ -451,45 +451,122 @@ exports.updateInvoice = (req, res) => {
     });
   };
 
-  // Replace items if provided
-  const replaceItems = (callback) => {
+  // Smart upsert items: update existing (by id), insert new (no id), delete removed
+  const upsertItems = (callback) => {
     if (!items || !Array.isArray(items)) return callback(null);
 
-    // Delete old items first (CASCADE would handle on invoice delete, but here we manually replace)
-    db.query("DELETE FROM invoice_items WHERE invoice_id = ?", [invoiceId], (delErr) => {
-      if (delErr) return callback(delErr);
+    // Fetch existing item IDs for this invoice
+    db.query("SELECT id FROM invoice_items WHERE invoice_id = ?", [invoiceId], (fetchErr, existingRows) => {
+      if (fetchErr) return callback(fetchErr);
 
-      if (items.length === 0) return callback(null);
+      const existingIds = existingRows.map((r) => r.id);
+      const incomingIds = items.filter((item) => item.id).map((item) => item.id);
 
-      const itemSql = `
-        INSERT INTO invoice_items (
-          invoice_id, sr_no, product_name, hsn_sac, qty, uom, rate,
-          taxable_value, cgst_rate, cgst_amount, sgst_rate, sgst_amount,
-          igst_rate, igst_amount, discount, total, item_note
-        ) VALUES ?
-      `;
+      // ── 1. Delete items that are no longer in the request ──
+      const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id));
 
-      const itemValues = items.map((item, index) => [
-        invoiceId,
-        item.sr_no || index + 1,
-        item.product_name,
-        item.hsn_sac || null,
-        item.qty || 1,
-        item.uom || null,
-        item.rate || 0,
-        item.taxable_value || 0,
-        item.cgst_rate || 0,
-        item.cgst_amount || 0,
-        item.sgst_rate || 0,
-        item.sgst_amount || 0,
-        item.igst_rate || 0,
-        item.igst_amount || 0,
-        item.discount || 0,
-        item.total || 0,
-        item.item_note || null
-      ]);
+      const deleteRemoved = (cb) => {
+        if (idsToDelete.length === 0) return cb(null);
+        db.query("DELETE FROM invoice_items WHERE id IN (?) AND invoice_id = ?", [idsToDelete, invoiceId], cb);
+      };
 
-      db.query(itemSql, [itemValues], callback);
+      // ── 2. Update existing items (have id) ──
+      const itemsToUpdate = items.filter((item) => item.id && existingIds.includes(item.id));
+      const itemsToInsert = items.filter((item) => !item.id);
+
+      const updateExisting = (cb) => {
+        if (itemsToUpdate.length === 0) return cb(null);
+
+        let completed = 0;
+        let hasErrored = false;
+
+        itemsToUpdate.forEach((item, index) => {
+          const updateSql = `
+            UPDATE invoice_items SET
+              sr_no = ?, product_name = ?, hsn_sac = ?, qty = ?, uom = ?, rate = ?,
+              taxable_value = ?, cgst_rate = ?, cgst_amount = ?, sgst_rate = ?, sgst_amount = ?,
+              igst_rate = ?, igst_amount = ?, discount = ?, total = ?, item_note = ?
+            WHERE id = ? AND invoice_id = ?
+          `;
+          const updateValues = [
+            item.sr_no || index + 1,
+            item.product_name,
+            item.hsn_sac || null,
+            item.qty || 1,
+            item.uom || null,
+            item.rate || 0,
+            item.taxable_value || 0,
+            item.cgst_rate || 0,
+            item.cgst_amount || 0,
+            item.sgst_rate || 0,
+            item.sgst_amount || 0,
+            item.igst_rate || 0,
+            item.igst_amount || 0,
+            item.discount || 0,
+            item.total || 0,
+            item.item_note || null,
+            item.id,
+            invoiceId
+          ];
+
+          db.query(updateSql, updateValues, (updateErr) => {
+            if (hasErrored) return;
+            if (updateErr) {
+              hasErrored = true;
+              return cb(updateErr);
+            }
+            completed++;
+            if (completed === itemsToUpdate.length) cb(null);
+          });
+        });
+      };
+
+      // ── 3. Insert new items (no id) ──
+      const insertNew = (cb) => {
+        if (itemsToInsert.length === 0) return cb(null);
+
+        const itemSql = `
+          INSERT INTO invoice_items (
+            invoice_id, sr_no, product_name, hsn_sac, qty, uom, rate,
+            taxable_value, cgst_rate, cgst_amount, sgst_rate, sgst_amount,
+            igst_rate, igst_amount, discount, total, item_note
+          ) VALUES ?
+        `;
+
+        // Calculate sr_no offset for new items based on existing updated items
+        const maxExistingSrNo = itemsToUpdate.length;
+
+        const itemValues = itemsToInsert.map((item, index) => [
+          invoiceId,
+          item.sr_no || maxExistingSrNo + index + 1,
+          item.product_name,
+          item.hsn_sac || null,
+          item.qty || 1,
+          item.uom || null,
+          item.rate || 0,
+          item.taxable_value || 0,
+          item.cgst_rate || 0,
+          item.cgst_amount || 0,
+          item.sgst_rate || 0,
+          item.sgst_amount || 0,
+          item.igst_rate || 0,
+          item.igst_amount || 0,
+          item.discount || 0,
+          item.total || 0,
+          item.item_note || null
+        ]);
+
+        db.query(itemSql, [itemValues], cb);
+      };
+
+      // Execute in sequence: delete removed → update existing → insert new
+      deleteRemoved((delErr) => {
+        if (delErr) return callback(delErr);
+        updateExisting((updErr) => {
+          if (updErr) return callback(updErr);
+          insertNew(callback);
+        });
+      });
     });
   };
 
@@ -502,7 +579,7 @@ exports.updateInvoice = (req, res) => {
       return res.status(500).json({ message: "Failed to update invoice" });
     }
 
-    replaceItems((itemErr) => {
+    upsertItems((itemErr) => {
       if (itemErr) {
         console.error("Update invoice items error:", itemErr);
         return res.status(500).json({ message: "Invoice updated but items failed" });
