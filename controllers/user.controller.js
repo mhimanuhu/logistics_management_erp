@@ -187,12 +187,12 @@ exports.deleteUser = (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // 1. Transfer logistic_entries to admin
-    const transferEntriesSql = "UPDATE logistic_entries SET user_id = ? WHERE user_id = ?";
+    // 1. Transfer job_entries to admin
+    const transferEntriesSql = "UPDATE job_entries SET created_by = ? WHERE created_by = ?";
     db.query(transferEntriesSql, [adminId, userId], (err2) => {
       if (err2) {
-        console.error("Transfer entries error:", err2);
-        return res.status(500).json({ message: "Failed to transfer entries" });
+        console.error("Transfer job entries error:", err2);
+        return res.status(500).json({ message: "Failed to transfer job entries" });
       }
 
       // 2. Reassign logs to admin
@@ -247,7 +247,7 @@ exports.deleteUser = (req, res) => {
                 );
 
                 res.json({
-                  message: "User deleted successfully. Their entries, logs, customers and invoices have been transferred to you."
+                  message: "User deleted successfully. Their jobs, logs, customers and invoices have been transferred to you."
                 });
               });
             });

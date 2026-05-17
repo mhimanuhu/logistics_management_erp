@@ -1,0 +1,2 @@
+-- Full v2 schema provided by user - saved for reference
+-- See the user's schema document for complete SQL

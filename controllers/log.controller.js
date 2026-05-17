@@ -1,9 +1,9 @@
 const db = require("../config/db");
 
 /**
- * Get Logs Controller
+ * Get Logs Controller — v2
  * Fetches all system logs (SUPER_ADMIN and DEV_ADMIN only)
- * Now also JOINs roles to show user role in the log output
+ * JOINs users + roles. References job_entries instead of logistic_entries.
  */
 exports.getLogs = (req, res) => {
   const role = req.user.role;
@@ -16,17 +16,19 @@ exports.getLogs = (req, res) => {
     SELECT
       l.id,
       l.action,
+      l.phase,
       l.description,
+      l.ip_address,
       l.created_at,
       u.name AS user_name,
       u.email AS user_email,
       r.name AS user_role,
-      le.invoice_no,
-      le.container_no
+      j.job_no,
+      j.job_type
     FROM logs l
     JOIN users u ON l.user_id = u.id
     JOIN roles r ON r.id = u.role_id
-    LEFT JOIN logistic_entries le ON l.entry_id = le.id
+    LEFT JOIN job_entries j ON l.job_id = j.id
     ORDER BY l.created_at DESC
   `;
 
