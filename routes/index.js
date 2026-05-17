@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Import all route modules
 const authRoutes = require("./auth.routes");
-const entryRoutes = require("./entry.routes");
+const jobRoutes = require("./job.routes");
 const logRoutes = require("./log.routes");
 const userRoutes = require("./user.routes");
 const roleRoutes = require("./role.routes");
@@ -11,13 +11,13 @@ const customerRoutes = require("./customer.routes");
 const invoiceRoutes = require("./invoice.routes");
 
 /**
- * Central Route Configuration
+ * Central Route Configuration — v2
  * Organizes all API routes with prefixes
  */
 
 // Mount routes
 router.use("/auth", authRoutes);
-router.use("/entries", entryRoutes);
+router.use("/jobs", jobRoutes);
 router.use("/logs", logRoutes);
 router.use("/users", userRoutes);
 router.use("/roles", roleRoutes);

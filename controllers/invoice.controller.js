@@ -214,7 +214,7 @@ exports.createInvoice = (req, res) => {
 
   const {
     customer_id,
-    logistic_entry_id,
+    job_id,
     invoice_prefix,
     invoice_number,
     invoice_post,
@@ -264,7 +264,7 @@ exports.createInvoice = (req, res) => {
 
   const headerSql = `
     INSERT INTO invoices (
-      customer_id, created_by, logistic_entry_id,
+      customer_id, created_by, job_id,
       invoice_prefix, invoice_number, invoice_post,
       invoice_type, invoice_date,
       place_of_supply, ship_to, rev_charge,
@@ -279,7 +279,7 @@ exports.createInvoice = (req, res) => {
   const headerValues = [
     customer_id,
     createdBy,
-    logistic_entry_id || null,
+    job_id || null,
     invoice_prefix || "KSL/25-26/",
     invoice_number,
     invoice_post || null,
@@ -385,7 +385,7 @@ function logAndRespond(userId, invoiceId, res) {
 //  Replaces all items (delete old → insert new)
 // ─────────────────────────────────────────────────────────
 const INVOICE_UPDATEABLE_FIELDS = [
-  "customer_id", "logistic_entry_id",
+  "customer_id", "job_id",
   "invoice_prefix", "invoice_number", "invoice_post",
   "invoice_type", "invoice_date",
   "place_of_supply", "ship_to", "rev_charge",
