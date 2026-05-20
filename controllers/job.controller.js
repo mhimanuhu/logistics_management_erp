@@ -26,42 +26,84 @@ exports.createJob = (req, res) => {
     return res.status(400).json({ message: "job_type must be 'export' or 'import'" });
   }
 
-  generateJobNo(job_type, (err, job_no) => {
-    if (err) {
-      console.error("Generate job_no error:", err);
-      return res.status(500).json({ message: "Failed to generate job number" });
+  // Validate FK references before inserting
+  const validateFKs = (callback) => {
+    const errors = [];
+
+    const checkCustomer = (cb) => {
+      if (!customer_id) return cb();
+      db.query("SELECT id FROM customers WHERE id = ?", [customer_id], (err, rows) => {
+        if (err) return cb(err);
+        if (rows.length === 0) errors.push(`Customer with id ${customer_id} does not exist`);
+        cb();
+      });
+    };
+
+    const checkAssigned = (cb) => {
+      if (!assigned_to) return cb();
+      db.query("SELECT id FROM users WHERE id = ?", [assigned_to], (err, rows) => {
+        if (err) return cb(err);
+        if (rows.length === 0) errors.push(`User with id ${assigned_to} does not exist (assigned_to)`);
+        cb();
+      });
+    };
+
+    checkCustomer((err1) => {
+      if (err1) return callback(err1);
+      checkAssigned((err2) => {
+        if (err2) return callback(err2);
+        if (errors.length > 0) return callback({ validation: true, errors });
+        callback(null);
+      });
+    });
+  };
+
+  validateFKs((fkErr) => {
+    if (fkErr) {
+      if (fkErr.validation) {
+        return res.status(400).json({ message: fkErr.errors.join(", ") });
+      }
+      console.error("FK validation error:", fkErr);
+      return res.status(500).json({ message: "Server error" });
     }
 
-    const sql = `INSERT INTO job_entries (job_type, job_no, customer_id, created_by, assigned_to, remarks, status)
-                 VALUES (?, ?, ?, ?, ?, ?, 'draft')`;
-    const vals = [job_type, job_no, customer_id || null, created_by, assigned_to || null, remarks || null];
-
-    db.query(sql, vals, (err2, result) => {
-      if (err2) {
-        console.error("Create job error:", err2);
-        return res.status(500).json({ message: "Failed to create job" });
+    generateJobNo(job_type, (err, job_no) => {
+      if (err) {
+        console.error("Generate job_no error:", err);
+        return res.status(500).json({ message: "Failed to generate job number" });
       }
 
-      const jobId = result.insertId;
-      const phase1Table = job_type === "export" ? "export_phase1" : "import_phase1";
+      const sql = `INSERT INTO job_entries (job_type, job_no, customer_id, created_by, assigned_to, remarks, status)
+                   VALUES (?, ?, ?, ?, ?, ?, 'draft')`;
+      const vals = [job_type, job_no, customer_id || null, created_by, assigned_to || null, remarks || null];
 
-      // Insert empty phase 1 row
-      db.query(`INSERT INTO ${phase1Table} (job_id) VALUES (?)`, [jobId], (err3) => {
-        if (err3) console.error("Insert phase1 error:", err3);
+      db.query(sql, vals, (err2, result) => {
+        if (err2) {
+          console.error("Create job error:", err2);
+          return res.status(500).json({ message: "Failed to create job" });
+        }
 
-        // Insert empty charges row
-        db.query(`INSERT INTO job_charges (job_id) VALUES (?)`, [jobId], (err4) => {
-          if (err4) console.error("Insert charges error:", err4);
+        const jobId = result.insertId;
+        const phase1Table = job_type === "export" ? "export_phase1" : "import_phase1";
 
-          // Log action
-          const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
-          db.query(
-            `INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
-            [created_by, jobId, "CREATE", 1, `Created ${job_type} job ${job_no}`, ip],
-            () => {}
-          );
+        // Insert empty phase 1 row
+        db.query(`INSERT INTO ${phase1Table} (job_id) VALUES (?)`, [jobId], (err3) => {
+          if (err3) console.error("Insert phase1 error:", err3);
 
-          res.json({ message: "Job created successfully", job_id: jobId, job_no });
+          // Insert empty charges row
+          db.query(`INSERT INTO job_charges (job_id) VALUES (?)`, [jobId], (err4) => {
+            if (err4) console.error("Insert charges error:", err4);
+
+            // Log action
+            const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
+            db.query(
+              `INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
+              [created_by, jobId, "CREATE", 1, `Created ${job_type} job ${job_no}`, ip],
+              () => {}
+            );
+
+            res.json({ message: "Job created successfully", job_id: jobId, job_no });
+          });
         });
       });
     });
