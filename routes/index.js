@@ -14,7 +14,7 @@ const invoiceRoutes = require("./invoice.routes");
  * Central Route Configuration — v2
  * Organizes all API routes with prefixes
  */
-
+// svsdsdvs
 // Mount routes
 router.use("/auth", authRoutes);
 router.use("/jobs", jobRoutes);
