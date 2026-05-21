@@ -30,7 +30,7 @@ const upload = multer({
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files (JPG, PNG, GIF, WEBP) and PDF are allowed!"), false);
+      cb(new Error("Only image files (JPG, PNG, GIF, WEBP) and PDF are allowed!"), false); // PDF Also
     }
   },
 });
