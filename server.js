@@ -14,7 +14,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://logistics-management-frontend-iota.vercel.app",
-      "https://logisticsmanagementerp-production.up.railway.app",
+      "https://logisticsmanagementerp-production-c96d.up.railway.app/",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
