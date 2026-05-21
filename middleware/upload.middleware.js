@@ -5,27 +5,32 @@ const cloudinary = require("../config/cloudinary");
 const CloudinaryStorage = require("multer-storage-cloudinary").CloudinaryStorage;
 
 // ─────────────────────────────────────────────────────────
-//  Image upload (logistic entries) — JPG/PNG/GIF/WEBP only
+//  File upload (job phases) — Images + PDF
 // ─────────────────────────────────────────────────────────
 const imageStorage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "logistics-erp",
-    allowed_formats: ["jpg", "jpeg", "png", "gif", "webp"],
-    transformation: [{ width: 1000, height: 1000, crop: "limit" }],
+  params: async (req, file) => {
+    const isPdf = file.mimetype === "application/pdf";
+    return {
+      folder: "logistics-erp",
+      allowed_formats: ["jpg", "jpeg", "png", "gif", "webp", "pdf"],
+      resource_type: isPdf ? "raw" : "image",
+      transformation: isPdf ? [] : [{ width: 1000, height: 1000, crop: "limit" }],
+    };
   },
 });
 
 const upload = multer({
   storage: imageStorage,
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 5 * 1024 * 1024, // 5 MB
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
+    if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files are allowed!"), false);
+      cb(new Error("Only image files (JPG, PNG, GIF, WEBP) and PDF are allowed!"), false);
     }
   },
 });
