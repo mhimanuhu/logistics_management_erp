@@ -35,7 +35,7 @@ app.use("/api", routes);
 
 // Health check
 app.get("/", (req, res) => {
-  res.send("Backend is running");
+  res.send("<h3>Backend is running</h3>");
 });
 
 // Global error handler (e.g. multer/Cloudinary upload errors) – must be last
