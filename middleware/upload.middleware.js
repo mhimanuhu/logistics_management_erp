@@ -116,20 +116,20 @@ function cloudinaryUpload(folder) {
 
     const isPdf = req.file.mimetype === "application/pdf";
 
-    // Derive the file extension from the (possibly rewritten) originalname so
-    // Cloudinary stores the file WITH its extension in the public_id.
-    // e.g.  "report.pdf"  → public_id ends with ".pdf"
-    //        "photo.jpg"  → public_id ends with ".jpg"
-    const ext = req.file.originalname.split(".").pop().toLowerCase() || (isPdf ? "pdf" : "jpg");
+    // Do NOT include the file extension in public_id.
+    // For raw (PDF) uploads, Cloudinary automatically appends the format extension
+    // to the public_id — so passing "file.pdf" would result in "file.pdf.pdf".
+    // For image uploads, Cloudinary does NOT append an extension to public_id.
     const uniqueId = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     const uploadOptions = {
       folder,
-      // public_id includes the extension — fixes the missing-extension Cloudinary bug
-      public_id: `${uniqueId}.${ext}`,
-      // "auto" lets Cloudinary detect the type and route correctly:
-      //   images → /image/upload/…   PDFs → /raw/upload/…
-      resource_type: "auto",
+      public_id: uniqueId,
+      // Use explicit resource_type — "auto" inconsistently routes PDFs to
+      // /image/upload/ which breaks PDF rendering in browsers.
+      //   "raw"   → PDFs served from /raw/upload/…filename.pdf  ✅
+      //   "image" → images served from /image/upload/…filename  ✅
+      resource_type: isPdf ? "raw" : "image",
       // Apply resize transformation only for images, not PDFs
       ...(!isPdf && {
         transformation: [{ width: 1000, height: 1000, crop: "limit" }],
