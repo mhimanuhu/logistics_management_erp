@@ -110,17 +110,28 @@ async function compressOrReject(req, _res, next) {
 //    req.file.path     → secure_url  (used by controllers as image_path)
 //    req.file.filename → public_id   (used by controllers as cloudinary_public_id)
 // ─────────────────────────────────────────────────────────────────────────────
-function cloudinaryUpload(folder, resourceType) {
+function cloudinaryUpload(folder) {
   return (req, _res, next) => {
     if (!req.file) return next();
 
     const isPdf = req.file.mimetype === "application/pdf";
-    const resolvedType = resourceType || (isPdf ? "raw" : "image");
+
+    // Derive the file extension from the (possibly rewritten) originalname so
+    // Cloudinary stores the file WITH its extension in the public_id.
+    // e.g.  "report.pdf"  → public_id ends with ".pdf"
+    //        "photo.jpg"  → public_id ends with ".jpg"
+    const ext = req.file.originalname.split(".").pop().toLowerCase() || (isPdf ? "pdf" : "jpg");
+    const uniqueId = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     const uploadOptions = {
       folder,
-      resource_type: resolvedType,
-      ...(resolvedType === "image" && {
+      // public_id includes the extension — fixes the missing-extension Cloudinary bug
+      public_id: `${uniqueId}.${ext}`,
+      // "auto" lets Cloudinary detect the type and route correctly:
+      //   images → /image/upload/…   PDFs → /raw/upload/…
+      resource_type: "auto",
+      // Apply resize transformation only for images, not PDFs
+      ...(!isPdf && {
         transformation: [{ width: 1000, height: 1000, crop: "limit" }],
       }),
     };
@@ -166,7 +177,7 @@ function upload(fieldName) {
   return [
     jobMulter.single(fieldName),
     compressOrReject,
-    cloudinaryUpload("logistics-erp", null /* auto-detect */),
+    cloudinaryUpload("logistics-erp"),
   ];
 }
 
@@ -184,7 +195,7 @@ function uploadInvoiceFile(fieldName) {
   return [
     invoiceMulter.single(fieldName),
     compressOrReject,
-    cloudinaryUpload("logistics-erp/invoices", "auto"),
+    cloudinaryUpload("logistics-erp/invoices"),
   ];
 }
 
