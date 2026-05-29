@@ -68,7 +68,7 @@ async function compressOrReject(req, _res, next) {
     try {
       compressedBuffer = await sharp(buffer)
         .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality })          // always output JPEG for maximum compression ratio
+        .jpeg({ quality }) // always output JPEG for maximum compression ratio
         .toBuffer();
 
       if (compressedBuffer.length <= MAX_SIZE_BYTES) {
