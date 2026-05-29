@@ -23,10 +23,10 @@ router.get("/:id/print", authMiddleware, invoiceController.getInvoicePrintData);
 router.get("/:id", authMiddleware, invoiceController.getInvoiceById);
 
 // POST /api/invoices — Create invoice with items (optional e-invoice file)
-router.post("/", authMiddleware, uploadInvoiceFile.single("e_invoice_file"), invoiceController.createInvoice);
+router.post("/", authMiddleware, ...uploadInvoiceFile("e_invoice_file"), invoiceController.createInvoice);
 
 // PUT /api/invoices/:id — Update invoice and items (optional e-invoice file)
-router.put("/:id", authMiddleware, uploadInvoiceFile.single("e_invoice_file"), invoiceController.updateInvoice);
+router.put("/:id", authMiddleware, ...uploadInvoiceFile("e_invoice_file"), invoiceController.updateInvoice);
 
 // DELETE /api/invoices/:id — Delete invoice (SUPER_ADMIN only)
 router.delete("/:id", authMiddleware, allowRoles("SUPER_ADMIN"), invoiceController.deleteInvoice);
