@@ -39,11 +39,13 @@ exports.updateImportPhase1 = (req, res) => {
   if (req.file) {
     updates.image_path = req.file.path;
     updates.cloudinary_public_id = req.file.filename;
-    db.query("SELECT cloudinary_public_id FROM import_phase1 WHERE job_id = ?", [jobId], (e, r) => {
-      if (!e && r.length > 0 && r[0].cloudinary_public_id) {
-        cloudinary.uploader.destroy(r[0].cloudinary_public_id, () => {});
-      }
-    });
+      db.query("SELECT cloudinary_public_id FROM import_phase1 WHERE job_id = ?", [jobId], (e, r) => {
+        if (!e && r.length > 0 && r[0].cloudinary_public_id) {
+          const oldPid = r[0].cloudinary_public_id;
+          const opts = oldPid.endsWith(".pdf") ? { resource_type: "raw" } : {};
+          cloudinary.uploader.destroy(oldPid, opts, () => {});
+        }
+      });
   }
 
   if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No valid fields" });
@@ -108,7 +110,9 @@ exports.updateImportPhase2 = (req, res) => {
       updates.cloudinary_public_id = req.file.filename;
       db.query("SELECT cloudinary_public_id FROM import_phase2 WHERE job_id = ?", [jobId], (e, r) => {
         if (!e && r.length > 0 && r[0].cloudinary_public_id) {
-          cloudinary.uploader.destroy(r[0].cloudinary_public_id, () => {});
+          const oldPid = r[0].cloudinary_public_id;
+          const opts = oldPid.endsWith(".pdf") ? { resource_type: "raw" } : {};
+          cloudinary.uploader.destroy(oldPid, opts, () => {});
         }
       });
     }

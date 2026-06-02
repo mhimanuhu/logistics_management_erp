@@ -162,7 +162,9 @@ exports.updateExportPhase3 = (req, res) => {
       // Delete old image
       db.query("SELECT cloudinary_public_id FROM export_phase3 WHERE job_id = ?", [jobId], (e, r) => {
         if (!e && r.length > 0 && r[0].cloudinary_public_id) {
-          cloudinary.uploader.destroy(r[0].cloudinary_public_id, () => {});
+          const oldPid = r[0].cloudinary_public_id;
+          const opts = oldPid.endsWith(".pdf") ? { resource_type: "raw" } : {};
+          cloudinary.uploader.destroy(oldPid, opts, () => {});
         }
       });
     }

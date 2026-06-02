@@ -421,10 +421,13 @@ exports.updateInvoice = (req, res) => {
     bodyFields.e_invoice_public_id = req.file.filename;
 
     // Delete old e-invoice from Cloudinary
+    // PDFs are stored as resource_type "raw" — must pass it explicitly or destroy silently fails.
     const getOldSql = "SELECT e_invoice_public_id FROM invoices WHERE id = ?";
     db.query(getOldSql, [invoiceId], (err, results) => {
       if (!err && results.length > 0 && results[0].e_invoice_public_id) {
-        cloudinary.uploader.destroy(results[0].e_invoice_public_id, () => {});
+        const oldPid = results[0].e_invoice_public_id;
+        const destroyOpts = oldPid.endsWith(".pdf") ? { resource_type: "raw" } : {};
+        cloudinary.uploader.destroy(oldPid, destroyOpts, () => {});
       }
     });
   }
@@ -626,8 +629,11 @@ exports.deleteInvoice = (req, res) => {
     }
 
     // Delete e-invoice file from Cloudinary if exists
+    // PDFs are stored as resource_type "raw" — must pass it explicitly or destroy silently fails.
     if (results[0].e_invoice_public_id) {
-      cloudinary.uploader.destroy(results[0].e_invoice_public_id, () => {});
+      const oldPid = results[0].e_invoice_public_id;
+      const destroyOpts = oldPid.endsWith(".pdf") ? { resource_type: "raw" } : {};
+      cloudinary.uploader.destroy(oldPid, destroyOpts, () => {});
     }
 
     // Delete invoice (items cascade)
