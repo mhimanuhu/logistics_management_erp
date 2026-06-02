@@ -1,3 +1,4 @@
+const path = require("path");
 const multer = require("multer");
 const sharp = require("sharp");
 const cloudinary = require("../config/cloudinary");
@@ -41,8 +42,13 @@ async function compressOrReject(req, _res, next) {
   const { originalname, mimetype, buffer, size } = req.file;
   const originalKB = Math.round((size || buffer.length) / 1024);
 
+  // Detect PDF by mimetype OR extension (same dual-check as cloudinaryUpload)
+  const fileIsPdf =
+    mimetype === "application/pdf" ||
+    path.extname(originalname).toLowerCase() === ".pdf";
+
   // ── PDF: reject if oversized ──────────────────────────────────────────────
-  if (mimetype === "application/pdf") {
+  if (fileIsPdf) {
     if (buffer.length > MAX_SIZE_BYTES) {
       const err = new Error("PDF is too large. Please upload a PDF under 1 MB.");
       err.status = 400;
@@ -103,7 +109,7 @@ async function compressOrReject(req, _res, next) {
 
   next();
 }
-
+  
 // ─────────────────────────────────────────────────────────────────────────────
 //  Cloudinary upload middleware
 //  Streams req.file.buffer to Cloudinary and writes back:
@@ -114,21 +120,23 @@ function cloudinaryUpload(folder) {
   return (req, _res, next) => {
     if (!req.file) return next();
 
-    const isPdf = req.file.mimetype === "application/pdf";
+    // Detect PDF by mimetype OR by file extension (fallback for clients that
+    // send PDFs with a generic MIME type like "application/octet-stream").
+    const isPdf =
+      req.file.mimetype === "application/pdf" ||
+      path.extname(req.file.originalname).toLowerCase() === ".pdf";
 
-    // Do NOT include the file extension in public_id.
-    // For raw (PDF) uploads, Cloudinary automatically appends the format extension
-    // to the public_id — so passing "file.pdf" would result in "file.pdf.pdf".
-    // For image uploads, Cloudinary does NOT append an extension to public_id.
+    // resource_type "raw" (PDFs) does NOT auto-append the extension — we must
+    // include it ourselves in public_id, e.g. "1748520_abc.pdf".
+    // resource_type "image" does NOT use an extension in public_id at all.
     const uniqueId = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const public_id = isPdf ? `${uniqueId}.pdf` : uniqueId;
 
     const uploadOptions = {
       folder,
-      public_id: uniqueId,
-      // Use explicit resource_type — "auto" inconsistently routes PDFs to
-      // /image/upload/ which breaks PDF rendering in browsers.
-      //   "raw"   → PDFs served from /raw/upload/…filename.pdf  ✅
-      //   "image" → images served from /image/upload/…filename  ✅
+      public_id,
+      //   "raw"   → PDFs  → /raw/upload/…uniqueId.pdf   ✅
+      //   "image" → images → /image/upload/…uniqueId     ✅
       resource_type: isPdf ? "raw" : "image",
       // Apply resize transformation only for images, not PDFs
       ...(!isPdf && {
