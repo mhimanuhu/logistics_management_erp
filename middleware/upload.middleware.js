@@ -21,11 +21,18 @@ function buildMulter(allowedMimes, maxSizeBytes) {
     storage: memStorage,
     limits: { fileSize: maxSizeBytes * 10 }, // generous inbound cap; enforcement happens below
     fileFilter: (_req, file, cb) => {
-      if (allowedMimes.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new Error(`Only ${allowedMimes.join(", ")} files are allowed!`), false);
+      const ext = path.extname(file.originalname).toLowerCase();
+      // Accept PDFs regardless of the MIME type the client sends (some send
+      // "application/octet-stream" for PDFs). Normalise the mimetype so all
+      // downstream checks (compressOrReject, cloudinaryUpload) see the right value.
+      if (ext === ".pdf" && allowedMimes.includes("application/pdf")) {
+        file.mimetype = "application/pdf"; // normalise
+        return cb(null, true);
       }
+      if (allowedMimes.includes(file.mimetype)) {
+        return cb(null, true);
+      }
+      cb(new Error(`Only ${allowedMimes.join(", ")} files are allowed!`), false);
     },
   });
 }
