@@ -48,7 +48,10 @@ exports.updateImportPhase1 = (req, res) => {
       });
   }
 
-  if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No valid fields" });
+  // If no fields provided, fall back to touching updated_at so the request still succeeds
+  if (Object.keys(updates).length === 0) {
+    updates.updated_at = new Date();
+  }
 
   const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
   db.query(`UPDATE import_phase1 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err, result) => {
@@ -117,7 +120,10 @@ exports.updateImportPhase2 = (req, res) => {
       });
     }
 
-    if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No valid fields" });
+    // If no fields provided, fall back to touching updated_at so the request still succeeds
+    if (Object.keys(updates).length === 0) {
+      updates.updated_at = new Date();
+    }
 
     const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
     db.query(`UPDATE import_phase2 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err2, result) => {

@@ -38,7 +38,10 @@ exports.updateExportPhase1 = (req, res) => {
   const jobId = parseInt(req.params.id, 10);
   const updates = {};
   EXP1_FIELDS.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
-  if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No valid fields" });
+  // If no fields provided, fall back to touching updated_at so the request still succeeds
+  if (Object.keys(updates).length === 0) {
+    updates.updated_at = new Date();
+  }
 
   const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
   db.query(`UPDATE export_phase1 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err, result) => {
@@ -91,7 +94,10 @@ exports.updateExportPhase2 = (req, res) => {
 
     const updates = {};
     EXP2_FIELDS.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
-    if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No valid fields" });
+    // If no fields provided, fall back to touching updated_at so the request still succeeds
+    if (Object.keys(updates).length === 0) {
+      updates.updated_at = new Date();
+    }
 
     const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
     db.query(`UPDATE export_phase2 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err2, result) => {
@@ -169,7 +175,10 @@ exports.updateExportPhase3 = (req, res) => {
       });
     }
 
-    if (Object.keys(updates).length === 0) return res.status(400).json({ message: "No valid fields" });
+    // If no fields provided, fall back to touching updated_at so the request still succeeds
+    if (Object.keys(updates).length === 0) {
+      updates.updated_at = new Date();
+    }
 
     const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
     db.query(`UPDATE export_phase3 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err2, result) => {
