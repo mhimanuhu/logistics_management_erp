@@ -37,7 +37,12 @@ exports.getExportPhase1 = (req, res) => {
 exports.updateExportPhase1 = (req, res) => {
   const jobId = parseInt(req.params.id, 10);
   const updates = {};
-  EXP1_FIELDS.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+  EXP1_FIELDS.forEach(f => {
+    if (req.body[f] !== undefined) {
+      // Convert empty strings to null so DATE/NUMERIC columns don't reject the value
+      updates[f] = req.body[f] === "" ? null : req.body[f];
+    }
+  });
   // If no fields provided, fall back to touching updated_at so the request still succeeds
   if (Object.keys(updates).length === 0) {
     updates.updated_at = new Date();
@@ -45,7 +50,10 @@ exports.updateExportPhase1 = (req, res) => {
 
   const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
   db.query(`UPDATE export_phase1 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err, result) => {
-    if (err) return res.status(500).json({ message: "Failed to update phase 1" });
+    if (err) {
+      console.error("[export_phase1 update error]", err.message);
+      return res.status(500).json({ message: "Failed to update phase 1" });
+    }
     if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 1 not found" });
 
     db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
@@ -93,7 +101,12 @@ exports.updateExportPhase2 = (req, res) => {
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     const updates = {};
-    EXP2_FIELDS.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+    EXP2_FIELDS.forEach(f => {
+      if (req.body[f] !== undefined) {
+        // Convert empty strings to null so DATE/NUMERIC columns don't reject the value
+        updates[f] = req.body[f] === "" ? null : req.body[f];
+      }
+    });
     // If no fields provided, fall back to touching updated_at so the request still succeeds
     if (Object.keys(updates).length === 0) {
       updates.updated_at = new Date();
@@ -101,7 +114,10 @@ exports.updateExportPhase2 = (req, res) => {
 
     const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
     db.query(`UPDATE export_phase2 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err2, result) => {
-      if (err2) return res.status(500).json({ message: "Failed to update phase 2" });
+      if (err2) {
+        console.error("[export_phase2 update error]", err2.message);
+        return res.status(500).json({ message: "Failed to update phase 2" });
+      }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 2 not found" });
 
       db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
@@ -158,7 +174,12 @@ exports.updateExportPhase3 = (req, res) => {
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     const updates = {};
-    EXP3_FIELDS.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+    EXP3_FIELDS.forEach(f => {
+      if (req.body[f] !== undefined) {
+        // Convert empty strings to null so DATE/NUMERIC columns don't reject the value
+        updates[f] = req.body[f] === "" ? null : req.body[f];
+      }
+    });
 
     // Handle image upload
     if (req.file) {
@@ -182,7 +203,10 @@ exports.updateExportPhase3 = (req, res) => {
 
     const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
     db.query(`UPDATE export_phase3 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err2, result) => {
-      if (err2) return res.status(500).json({ message: "Failed to update phase 3" });
+      if (err2) {
+        console.error("[export_phase3 update error]", err2.message);
+        return res.status(500).json({ message: "Failed to update phase 3" });
+      }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 3 not found" });
 
       db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,

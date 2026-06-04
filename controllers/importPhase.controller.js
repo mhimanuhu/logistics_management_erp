@@ -33,7 +33,12 @@ exports.getImportPhase1 = (req, res) => {
 exports.updateImportPhase1 = (req, res) => {
   const jobId = parseInt(req.params.id, 10);
   const updates = {};
-  IMP1_FIELDS.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+  IMP1_FIELDS.forEach(f => {
+    if (req.body[f] !== undefined) {
+      // Convert empty strings to null so DATE/NUMERIC columns don't reject the value
+      updates[f] = req.body[f] === "" ? null : req.body[f];
+    }
+  });
 
   // Handle image upload
   if (req.file) {
@@ -52,7 +57,10 @@ exports.updateImportPhase1 = (req, res) => {
 
   const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
   db.query(`UPDATE import_phase1 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err, result) => {
-    if (err) return res.status(500).json({ message: "Failed to update phase 1" });
+    if (err) {
+      console.error("[import_phase1 update error]", err.message);
+      return res.status(500).json({ message: "Failed to update phase 1" });
+    }
     if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 1 not found" });
 
     db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
@@ -103,7 +111,12 @@ exports.updateImportPhase2 = (req, res) => {
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     const updates = {};
-    IMP2_FIELDS.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+    IMP2_FIELDS.forEach(f => {
+      if (req.body[f] !== undefined) {
+        // Convert empty strings to null so DATE/NUMERIC columns don't reject the value
+        updates[f] = req.body[f] === "" ? null : req.body[f];
+      }
+    });
 
     if (req.file) {
       updates.image_path = req.file.path;
@@ -121,7 +134,10 @@ exports.updateImportPhase2 = (req, res) => {
 
     const fields = Object.keys(updates).map(k => `${k} = ?`).join(", ");
     db.query(`UPDATE import_phase2 SET ${fields} WHERE job_id = ?`, [...Object.values(updates), jobId], (err2, result) => {
-      if (err2) return res.status(500).json({ message: "Failed to update phase 2" });
+      if (err2) {
+        console.error("[import_phase2 update error]", err2.message);
+        return res.status(500).json({ message: "Failed to update phase 2" });
+      }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 2 not found" });
 
       db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
