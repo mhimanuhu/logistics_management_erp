@@ -28,7 +28,10 @@ const EXP1_FIELDS = [
 exports.getExportPhase1 = (req, res) => {
   const jobId = parseInt(req.params.id, 10);
   db.query("SELECT * FROM export_phase1 WHERE job_id = ?", [jobId], (err, rows) => {
-    if (err) return res.status(500).json({ message: "Failed to fetch phase 1" });
+    if (err) {
+      console.error("[export_phase1 get error]", err.message);
+      return res.status(500).json({ message: "Failed to fetch phase 1", error: err.message });
+    }
     if (rows.length === 0) return res.status(404).json({ message: "Phase 1 data not found" });
     res.json(rows[0]);
   });
@@ -65,14 +68,18 @@ exports.updateExportPhase1 = (req, res) => {
 exports.completeExportPhase1 = (req, res) => {
   const jobId = parseInt(req.params.id, 10);
   db.query(`UPDATE export_phase1 SET is_complete = 1, completed_at = NOW() WHERE job_id = ?`, [jobId], (err, result) => {
-    if (err) return res.status(500).json({ message: "Failed to complete phase 1" });
+    if (err) {
+      console.error("[export_phase1 complete error]", err.message);
+      return res.status(500).json({ message: "Failed to complete phase 1", error: err.message });
+    }
     if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 1 not found" });
 
     // Insert empty phase 2 row if not exists, advance current_phase
     db.query(`INSERT IGNORE INTO export_phase2 (job_id) VALUES (?)`, [jobId], () => {});
     db.query(`UPDATE job_entries SET current_phase = 2, status = 'in_progress' WHERE id = ?`, [jobId], () => {});
+    const userId = req.user && req.user.id ? req.user.id : null;
     db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
-      [req.user.id, jobId, "PHASE_COMPLETE", 1, "Completed export phase 1", getIp(req)], () => {});
+      [userId, jobId, "PHASE_COMPLETE", 1, "Completed export phase 1", getIp(req)], () => {});
     res.json({ message: "Phase 1 marked complete" });
   });
 };
@@ -87,7 +94,10 @@ exports.getExportPhase2 = (req, res) => {
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     db.query("SELECT * FROM export_phase2 WHERE job_id = ?", [jobId], (err2, rows) => {
-      if (err2) return res.status(500).json({ message: "Failed to fetch phase 2" });
+      if (err2) {
+        console.error("[export_phase2 get error]", err2.message);
+        return res.status(500).json({ message: "Failed to fetch phase 2", error: err2.message });
+      }
       if (rows.length === 0) return res.status(404).json({ message: "Phase 2 data not found" });
       res.json(rows[0]);
     });
@@ -130,17 +140,24 @@ exports.updateExportPhase2 = (req, res) => {
 exports.completeExportPhase2 = (req, res) => {
   const jobId = parseInt(req.params.id, 10);
   checkPrevPhase("export", jobId, 2, (err, ok) => {
-    if (err) return res.status(500).json({ message: "Server error" });
+    if (err) {
+      console.error("[export_phase2 prevPhase check error]", err.message);
+      return res.status(500).json({ message: "Server error", error: err.message });
+    }
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     db.query(`UPDATE export_phase2 SET is_complete = 1, completed_at = NOW() WHERE job_id = ?`, [jobId], (err2, result) => {
-      if (err2) return res.status(500).json({ message: "Failed to complete phase 2" });
+      if (err2) {
+        console.error("[export_phase2 complete error]", err2.message);
+        return res.status(500).json({ message: "Failed to complete phase 2", error: err2.message });
+      }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 2 not found" });
 
       db.query(`INSERT IGNORE INTO export_phase3 (job_id) VALUES (?)`, [jobId], () => {});
       db.query(`UPDATE job_entries SET current_phase = 3, status = 'in_progress' WHERE id = ?`, [jobId], () => {});
+      const userId = req.user && req.user.id ? req.user.id : null;
       db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
-        [req.user.id, jobId, "PHASE_COMPLETE", 2, "Completed export phase 2", getIp(req)], () => {});
+        [userId, jobId, "PHASE_COMPLETE", 2, "Completed export phase 2", getIp(req)], () => {});
       res.json({ message: "Phase 2 marked complete" });
     });
   });
@@ -160,7 +177,10 @@ exports.getExportPhase3 = (req, res) => {
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     db.query("SELECT * FROM export_phase3 WHERE job_id = ?", [jobId], (err2, rows) => {
-      if (err2) return res.status(500).json({ message: "Failed to fetch phase 3" });
+      if (err2) {
+        console.error("[export_phase3 get error]", err2.message);
+        return res.status(500).json({ message: "Failed to fetch phase 3", error: err2.message });
+      }
       if (rows.length === 0) return res.status(404).json({ message: "Phase 3 data not found" });
       res.json(rows[0]);
     });
@@ -219,16 +239,23 @@ exports.updateExportPhase3 = (req, res) => {
 exports.completeExportPhase3 = (req, res) => {
   const jobId = parseInt(req.params.id, 10);
   checkPrevPhase("export", jobId, 3, (err, ok) => {
-    if (err) return res.status(500).json({ message: "Server error" });
+    if (err) {
+      console.error("[export_phase3 prevPhase check error]", err.message);
+      return res.status(500).json({ message: "Server error", error: err.message });
+    }
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     db.query(`UPDATE export_phase3 SET is_complete = 1, completed_at = NOW() WHERE job_id = ?`, [jobId], (err2, result) => {
-      if (err2) return res.status(500).json({ message: "Failed to complete phase 3" });
+      if (err2) {
+        console.error("[export_phase3 complete error]", err2.message);
+        return res.status(500).json({ message: "Failed to complete phase 3", error: err2.message });
+      }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 3 not found" });
 
       db.query(`UPDATE job_entries SET status = 'completed' WHERE id = ?`, [jobId], () => {});
+      const userId = req.user && req.user.id ? req.user.id : null;
       db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
-        [req.user.id, jobId, "PHASE_COMPLETE", 3, "Completed export phase 3 — job complete", getIp(req)], () => {});
+        [userId, jobId, "PHASE_COMPLETE", 3, "Completed export phase 3 — job complete", getIp(req)], () => {});
       res.json({ message: "Phase 3 marked complete — job completed" });
     });
   });

@@ -27,7 +27,7 @@ router.get("/:id/export/phase/2", authMiddleware, exportPhase.getExportPhase2);
 router.put("/:id/export/phase/2", authMiddleware, exportPhase.updateExportPhase2);
 router.post("/:id/export/phase/2/complete", authMiddleware, exportPhase.completeExportPhase2);
 
-router.get("/:id/export/phase/3", authMiddleware, ...upload("image"), exportPhase.getExportPhase3);
+router.get("/:id/export/phase/3", authMiddleware, exportPhase.getExportPhase3);
 router.put("/:id/export/phase/3", authMiddleware, ...upload("image"), exportPhase.updateExportPhase3);
 router.post("/:id/export/phase/3/complete", authMiddleware, exportPhase.completeExportPhase3);
 
@@ -45,3 +45,4 @@ router.get("/:id/charges", authMiddleware, chargesController.getCharges);
 router.put("/:id/charges", authMiddleware, chargesController.updateCharges);
 
 module.exports = router;
+
