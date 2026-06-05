@@ -9,10 +9,14 @@ function generateJobNo(jobType, callback) {
   const fy = `${String(year).slice(2)}-${String(year + 1).slice(2)}`;
   const prefix = jobType === "export" ? "EXP" : "IMP";
 
-  const sql = `SELECT COUNT(*) AS cnt FROM job_entries WHERE job_type = ? AND job_no LIKE ?`;
+  // Use MAX on the numeric suffix instead of COUNT so deletions/gaps
+  // never cause a duplicate job_no collision on UNIQUE constraint.
+  const sql = `SELECT MAX(CAST(SUBSTRING_INDEX(job_no, '/', -1) AS UNSIGNED)) AS maxSeq
+               FROM job_entries
+               WHERE job_type = ? AND job_no LIKE ?`;
   db.query(sql, [jobType, `${prefix}/${fy}/%`], (err, rows) => {
     if (err) return callback(err);
-    const seq = String((rows[0].cnt || 0) + 1).padStart(4, "0");
+    const seq = String((rows[0].maxSeq || 0) + 1).padStart(4, "0");
     callback(null, `${prefix}/${fy}/${seq}`);
   });
 }
@@ -80,7 +84,7 @@ exports.createJob = (req, res) => {
       db.query(sql, vals, (err2, result) => {
         if (err2) {
           console.error("Create job error:", err2);
-          return res.status(500).json({ message: "Failed to create job" });
+          return res.status(500).json({ message: "Failed to create job", error: err2.message, sql_code: err2.code });
         }
 
         const jobId = result.insertId;
