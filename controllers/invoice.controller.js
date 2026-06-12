@@ -477,7 +477,7 @@ exports.updateInvoice = (req, res) => {
       callback(null);
     });
   };
-
+// Update
   // Smart upsert items: update existing (by id), insert new (no id), delete removed
   const upsertItems = (callback) => {
     if (!items || !Array.isArray(items)) return callback(null);

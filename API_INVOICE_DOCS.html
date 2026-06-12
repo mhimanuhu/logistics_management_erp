@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Invoice API Documentation — Logistics ERP</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --primary: #1e40af;
+    --primary-light: #eff6ff;
+    --accent: #0ea5e9;
+    --success: #16a34a;
+    --success-light: #f0fdf4;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-500: #64748b;
+    --gray-700: #334155;
+    --gray-900: #0f172a;
+    --border: #e2e8f0;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--gray-700);
+    background: #fff;
+    padding: 0;
+  }
+
+  /* ── Cover Page ── */
+  .cover {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 40%, #0ea5e9 100%);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 80px 72px;
+    page-break-after: always;
+  }
+  .cover-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .cover h1 {
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    letter-spacing: -0.5px;
+  }
+  .cover h1 span { color: #93c5fd; }
+  .cover-sub {
+    font-size: 17px;
+    font-weight: 300;
+    opacity: 0.85;
+    margin-bottom: 48px;
+    max-width: 480px;
+  }
+  .cover-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .cover-meta strong { opacity: 1; }
+  .cover-line {
+    width: 60px;
+    height: 3px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 2px;
+    margin: 36px 0;
+  }
+  .cover-endpoints {
+    display: flex;
+    gap: 32px;
+    margin-top: 48px;
+  }
+  .cover-stat { text-align: center; }
+  .cover-stat .num {
+    font-size: 32px;
+    font-weight: 700;
+    display: block;
+  }
+  .cover-stat .lbl {
+    font-size: 11px;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── Main content ── */
+  .content {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 56px;
+  }
+
+  /* ── Section header ── */
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+    margin-top: 40px;
+  }
+
+  /* ── Endpoint card ── */
+  .endpoint {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 28px;
+    overflow: hidden;
+    page-break-inside: avoid;
+  }
+  .endpoint-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--border);
+  }
+  .method {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 5px;
+    letter-spacing: 0.5px;
+    min-width: 54px;
+    text-align: center;
+  }
+  .method.get    { background: #dbeafe; color: #1d4ed8; }
+  .method.post   { background: #dcfce7; color: #15803d; }
+  .method.put    { background: #fef9c3; color: #a16207; }
+  .method.delete { background: #fee2e2; color: #b91c1c; }
+
+  .endpoint-path {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-900);
+    flex: 1;
+  }
+  .endpoint-desc {
+    font-size: 12px;
+    color: var(--gray-500);
+  }
+  .endpoint-body {
+    padding: 18px 20px;
+  }
+
+  /* ── Auth badge ── */
+  .auth-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-left: auto;
+  }
+  .auth-badge.jwt { background: #ede9fe; color: #6d28d9; }
+  .auth-badge.admin { background: #fee2e2; color: #b91c1c; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+  th {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: var(--gray-50); }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--gray-100);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #be185d;
+  }
+
+  .badge-req {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+  }
+  .badge-auto {
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+  }
+  .badge-opt {
+    background: var(--gray-100);
+    color: var(--gray-500);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 10px;
+  }
+
+  /* ── Code block ── */
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    margin-top: 10px;
+  }
+  .json-key   { color: #93c5fd; }
+  .json-str   { color: #86efac; }
+  .json-num   { color: #fda4af; }
+  .json-bool  { color: #fcd34d; }
+  .json-null  { color: #9ca3af; }
+  .json-comment { color: #6b7280; font-style: italic; }
+
+  /* ── Callout boxes ── */
+  .callout {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-top: 12px;
+    font-size: 12px;
+  }
+  .callout.info    { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e40af; }
+  .callout.success { background: #f0fdf4; border-left: 3px solid #22c55e; color: #15803d; }
+  .callout.warn    { background: #fffbeb; border-left: 3px solid #f59e0b; color: #92400e; }
+  .callout.danger  { background: #fef2f2; border-left: 3px solid #ef4444; color: #991b1b; }
+  .callout-icon { font-size: 14px; flex-shrink: 0; }
+
+  /* ── Sub-section ── */
+  h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 16px 0 8px;
+  }
+  h4 {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 14px 0 6px;
+  }
+
+  /* ── TOC ── */
+  .toc {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin: 32px 0;
+    background: var(--gray-50);
+    page-break-after: always;
+  }
+  .toc h2 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toc ol {
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .toc li {
+    font-size: 12px;
+    color: var(--primary);
+  }
+  .toc li span {
+    color: var(--gray-500);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    margin-left: 8px;
+  }
+
+  /* ── Page title ── */
+  .page-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+  }
+  .page-subtitle {
+    color: var(--gray-500);
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 28px 0;
+  }
+
+  /* ── Response ── */
+  .response-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gray-500);
+    margin-top: 16px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-pill {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 10px;
+  }
+  .status-200 { background: #dcfce7; color: #15803d; }
+  .status-400 { background: #fef9c3; color: #a16207; }
+  .status-403 { background: #fee2e2; color: #b91c1c; }
+  .status-500 { background: #f3e8ff; color: #7c3aed; }
+
+  /* ── Financial Year Info Box ── */
+  .fy-box {
+    background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-top: 12px;
+  }
+  .fy-box h4 { margin-top: 0; color: var(--primary); }
+  .fy-examples {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .fy-example {
+    background: white;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .fy-example .period { font-size: 10px; color: var(--gray-500); }
+
+  /* ── Print ── */
+  @media print {
+    body { font-size: 11px; }
+    .cover { min-height: auto; padding: 60px 56px; }
+    .cover h1 { font-size: 32px; }
+    .endpoint { page-break-inside: avoid; }
+    pre { font-size: 10px; }
+    @page { margin: 15mm 15mm; size: A4; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     COVER PAGE
+════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-badge">Technical Documentation</div>
+  <h1>Invoice API<br /><span>Reference Guide</span></h1>
+  <p class="cover-sub">Complete REST API specification for the Logistics Management ERP — Invoice Module</p>
+  <div class="cover-line"></div>
+  <div class="cover-meta">
+    <div><strong>Base URL:</strong> /api/invoices</div>
+    <div><strong>Auth:</strong> JWT Bearer Token (all endpoints)</div>
+    <div><strong>Content-Type:</strong> multipart/form-data (create/update) · application/json (read)</div>
+    <div><strong>Generated:</strong> June 2026 · Financial Year: KLS/26-27/</div>
+  </div>
+  <div class="cover-endpoints">
+    <div class="cover-stat">
+      <span class="num">7</span>
+      <span class="lbl">Endpoints</span>
+    </div>
+    <div class="cover-stat">
+      <span class="num">4</span>
+      <span class="lbl">Methods</span>
+    </div>
+    <div class="cover-stat">
+      <span class="num">Auto</span>
+      <span class="lbl">Invoice No.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     TABLE OF CONTENTS
+════════════════════════════════════════ -->
+<div class="content">
+  <div class="toc">
+    <h2>📋 Table of Contents</h2>
+    <ol>
+      <li>GET /api/invoices <span>— List all invoices with filters</span></li>
+      <li>GET /api/invoices/summary/monthly <span>— Month-wise totals</span></li>
+      <li>GET /api/invoices/:id <span>— Single invoice with items</span></li>
+      <li>GET /api/invoices/:id/print <span>— Full print/PDF data</span></li>
+      <li>POST /api/invoices <span>— Create invoice (auto invoice number)</span></li>
+      <li>PUT /api/invoices/:id <span>— Update invoice + items (smart upsert)</span></li>
+      <li>DELETE /api/invoices/:id <span>— Delete invoice (SUPER_ADMIN only)</span></li>
+    </ol>
+  </div>
+
+  <!-- ═══════════════════
+       AUTO-NUMBER INFO
+  ════════════════════ -->
+  <div class="section-title">How Invoice Numbering Works</div>
+  <div class="fy-box">
+    <h4>🔢 Backend Auto-Generation — invoice_prefix &amp; invoice_number</h4>
+    <p style="font-size:12px; color:#1e40af; margin-bottom:8px;">
+      Both fields are <strong>generated entirely on the server</strong>. The frontend must never send these fields.
+    </p>
+    <p style="font-size:12px; color:#334155; margin-bottom:8px;">
+      <strong>invoice_prefix</strong> is derived from the Indian Financial Year (April → March).
+      The server queries <code>MAX(invoice_number)</code> for that prefix and increments by 1,
+      zero-padded to 3 digits.
+    </p>
+    <div class="fy-examples">
+      <div class="fy-example">
+        <div>KLS/26-27/001</div>
+        <div class="period">Apr 2026 – Mar 2027 · 1st invoice</div>
+      </div>
+      <div class="fy-example">
+        <div>KLS/26-27/042</div>
+        <div class="period">Apr 2026 – Mar 2027 · 42nd invoice</div>
+      </div>
+      <div class="fy-example">
+        <div>KLS/27-28/001</div>
+        <div class="period">Apr 2027 – Mar 2028 · resets to 001</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════
+       1. GET /api/invoices
+  ════════════════════════════════════════ -->
+  <div class="section-title">Endpoint 1</div>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method get">GET</span>
+      <span class="endpoint-path">/api/invoices</span>
+      <span class="endpoint-desc">List all invoices</span>
+      <span class="auth-badge jwt">🔐 JWT</span>
+    </div>
+    <div class="endpoint-body">
+      <h4>Query Parameters</h4>
+      <table>
+        <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>status</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td><code>draft</code> · <code>sent</code> · <code>paid</code></td></tr>
+          <tr><td><code>customer_id</code></td><td>number</td><td><span class="badge-opt">Optional</span></td><td>Filter by customer ID</td></tr>
+          <tr><td><code>search</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td>Search invoice no, company name, s.bill no, cont no</td></tr>
+        </tbody>
+      </table>
+
+      <div class="response-label">Response <span class="status-pill status-200">200 OK</span></div>
+      <pre><span class="json-comment">// Array of invoice objects</span>
+[
+  {
+    <span class="json-key">"id"</span>: <span class="json-num">42</span>,
+    <span class="json-key">"full_invoice_no"</span>: <span class="json-str">"KLS/26-27/001"</span>,
+    <span class="json-key">"invoice_type"</span>: <span class="json-str">"tax_invoice"</span>,
+    <span class="json-key">"invoice_date"</span>: <span class="json-str">"2026-06-12"</span>,
+    <span class="json-key">"status"</span>: <span class="json-str">"draft"</span>,
+    <span class="json-key">"customer_id"</span>: <span class="json-num">7</span>,
+    <span class="json-key">"company_name"</span>: <span class="json-str">"Acme Exports Pvt Ltd"</span>,
+    <span class="json-key">"total_amount"</span>: <span class="json-num">59000.00</span>,
+    <span class="json-key">"items"</span>: [ <span class="json-comment">/* item objects */</span> ]
+  }
+]</pre>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       2. GET /summary/monthly
+  ════════════════════════════════════════ -->
+  <div class="section-title">Endpoint 2</div>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method get">GET</span>
+      <span class="endpoint-path">/api/invoices/summary/monthly</span>
+      <span class="endpoint-desc">Monthly totals</span>
+      <span class="auth-badge jwt">🔐 JWT</span>
+    </div>
+    <div class="endpoint-body">
+      <h4>Query Parameters</h4>
+      <table>
+        <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>year</code></td><td>number</td><td><span class="badge-opt">Optional</span></td><td>Calendar year — defaults to current year</td></tr>
+        </tbody>
+      </table>
+
+      <div class="response-label">Response <span class="status-pill status-200">200 OK</span></div>
+      <pre>{
+  <span class="json-key">"year"</span>: <span class="json-num">2026</span>,
+  <span class="json-key">"grand_total_invoices"</span>: <span class="json-num">87</span>,
+  <span class="json-key">"grand_total_amount"</span>: <span class="json-num">4250000.00</span>,
+  <span class="json-key">"months"</span>: [
+    {
+      <span class="json-key">"month_number"</span>: <span class="json-num">4</span>,
+      <span class="json-key">"month_label"</span>: <span class="json-str">"Apr 2026"</span>,
+      <span class="json-key">"total_invoices"</span>: <span class="json-num">12</span>,
+      <span class="json-key">"total_taxable"</span>: <span class="json-num">380000.00</span>,
+      <span class="json-key">"total_tax"</span>: <span class="json-num">68400.00</span>,
+      <span class="json-key">"total_amount"</span>: <span class="json-num">448400.00</span>
+    }
+  ]
+}</pre>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       3. GET /api/invoices/:id
+  ════════════════════════════════════════ -->
+  <div class="section-title">Endpoint 3</div>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method get">GET</span>
+      <span class="endpoint-path">/api/invoices/:id</span>
+      <span class="endpoint-desc">Single invoice with all items</span>
+      <span class="auth-badge jwt">🔐 JWT</span>
+    </div>
+    <div class="endpoint-body">
+      <h4>Path Parameters</h4>
+      <table>
+        <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>number</td><td>Invoice primary key</td></tr>
+        </tbody>
+      </table>
+
+      <div class="response-label">Response <span class="status-pill status-200">200 OK</span></div>
+      <pre>{
+  <span class="json-key">"id"</span>: <span class="json-num">42</span>,
+  <span class="json-key">"full_invoice_no"</span>: <span class="json-str">"KLS/26-27/001"</span>,
+  <span class="json-key">"invoice_prefix"</span>: <span class="json-str">"KLS/26-27/"</span>,
+  <span class="json-key">"invoice_number"</span>: <span class="json-str">"001"</span>,
+  <span class="json-key">"company_name"</span>: <span class="json-str">"Acme Exports Pvt Ltd"</span>,
+  <span class="json-key">"gstin"</span>: <span class="json-str">"27AABCA1234B1ZV"</span>,
+  <span class="json-key">"items"</span>: [
+    {
+      <span class="json-key">"id"</span>: <span class="json-num">101</span>,
+      <span class="json-key">"sr_no"</span>: <span class="json-num">1</span>,
+      <span class="json-key">"product_name"</span>: <span class="json-str">"Ocean Freight"</span>,
+      <span class="json-key">"hsn_sac"</span>: <span class="json-str">"9965"</span>,
+      <span class="json-key">"qty"</span>: <span class="json-num">1</span>,
+      <span class="json-key">"rate"</span>: <span class="json-num">50000.00</span>,
+      <span class="json-key">"total"</span>: <span class="json-num">59000.00</span>
+    }
+  ]
+}</pre>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       4. GET /api/invoices/:id/print
+  ════════════════════════════════════════ -->
+  <div class="section-title">Endpoint 4</div>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method get">GET</span>
+      <span class="endpoint-path">/api/invoices/:id/print</span>
+      <span class="endpoint-desc">Full print / PDF data</span>
+      <span class="auth-badge jwt">🔐 JWT</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:12px; color:var(--gray-500); margin-bottom:10px;">Returns all data needed to render a printable/PDF invoice — invoice header, customer, line items, company details, bank info, and computed totals.</p>
+
+      <div class="response-label">Response <span class="status-pill status-200">200 OK</span></div>
+      <pre>{
+  <span class="json-key">"invoice"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-num">42</span>,
+    <span class="json-key">"full_invoice_no"</span>: <span class="json-str">"KLS/26-27/001"</span>,
+    <span class="json-key">"invoice_type_label"</span>: <span class="json-str">"TAX INVOICE"</span>,
+    <span class="json-key">"total_in_words"</span>: <span class="json-str">"FIFTY-NINE THOUSAND RUPEES ONLY"</span>,
+    <span class="json-comment">// ... all invoice header fields</span>
+  },
+  <span class="json-key">"customer"</span>: {
+    <span class="json-key">"company_name"</span>: <span class="json-str">"Acme Exports Pvt Ltd"</span>,
+    <span class="json-key">"gstin"</span>: <span class="json-str">"27AABCA1234B1ZV"</span>,
+    <span class="json-key">"full_address"</span>: <span class="json-str">"123 Port Road, Mumbai, Maharashtra, 400001"</span>,
+    <span class="json-comment">// ... all customer fields</span>
+  },
+  <span class="json-key">"items"</span>: [ <span class="json-comment">/* line items array */</span> ],
+  <span class="json-key">"company"</span>: {
+    <span class="json-key">"name"</span>: <span class="json-str">"KLS Logistics Pvt Ltd"</span>,
+    <span class="json-key">"gstin"</span>: <span class="json-str">"..."</span>,
+    <span class="json-key">"logo_url"</span>: <span class="json-str">"https://..."</span>
+  },
+  <span class="json-key">"bank"</span>: {
+    <span class="json-key">"acc_number"</span>: <span class="json-str">"XXXXXXXXXXXX"</span>,
+    <span class="json-key">"ifsc"</span>: <span class="json-str">"HDFC0001234"</span>,
+    <span class="json-key">"upi_string"</span>: <span class="json-str">"upi://pay?pa=..."</span>
+  },
+  <span class="json-key">"terms"</span>: <span class="json-str">"Payment due within 30 days..."</span>
+}</pre>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       5. POST /api/invoices
+  ════════════════════════════════════════ -->
+  <div class="section-title">Endpoint 5</div>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method post">POST</span>
+      <span class="endpoint-path">/api/invoices</span>
+      <span class="endpoint-desc">Create a new invoice</span>
+      <span class="auth-badge jwt">🔐 JWT</span>
+    </div>
+    <div class="endpoint-body">
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <span><strong>Content-Type:</strong> <code>multipart/form-data</code> — required to support optional e-invoice file upload. Items array must be JSON-stringified.</span>
+      </div>
+
+      <div class="callout warn" style="margin-top:8px;">
+        <span class="callout-icon">⚡</span>
+        <span><strong>Do NOT send</strong> <code>invoice_prefix</code> or <code>invoice_number</code> — these are fully auto-generated by the backend using the current Indian Financial Year and an auto-incrementing sequence.</span>
+      </div>
+
+      <h4>Request Body — Header Fields</h4>
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Status</th><th>Notes / Allowed Values</th></tr></thead>
+        <tbody>
+          <tr><td><code>customer_id</code></td><td>number</td><td><span class="badge-req">Required</span></td><td>FK → customers table</td></tr>
+          <tr><td><code>invoice_date</code></td><td>date</td><td><span class="badge-req">Required</span></td><td>Format: <code>YYYY-MM-DD</code></td></tr>
+          <tr><td><code>place_of_supply</code></td><td>string</td><td><span class="badge-req">Required</span></td><td>State name / code</td></tr>
+          <tr style="background:#dbeafe22;"><td><code>invoice_prefix</code></td><td>—</td><td><span class="badge-auto">Auto-Generated</span></td><td><strong>KLS/26-27/</strong> — do not send</td></tr>
+          <tr style="background:#dbeafe22;"><td><code>invoice_number</code></td><td>—</td><td><span class="badge-auto">Auto-Generated</span></td><td><strong>001, 002…</strong> — do not send</td></tr>
+          <tr><td><code>invoice_type</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td><code>tax_invoice</code> (default) · <code>bill_of_supply</code> · <code>export_invoice</code></td></tr>
+          <tr><td><code>job_id</code></td><td>number</td><td><span class="badge-opt">Optional</span></td><td>FK → jobs table</td></tr>
+          <tr><td><code>invoice_post</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td>Suffix / postfix text</td></tr>
+          <tr><td><code>ship_to</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td>Shipping address</td></tr>
+          <tr><td><code>rev_charge</code></td><td>0 / 1</td><td><span class="badge-opt">Optional</span></td><td>Reverse charge applicable</td></tr>
+          <tr><td><code>shipper</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td></td></tr>
+          <tr><td><code>bl_no</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td>Bill of Lading number</td></tr>
+          <tr><td><code>sbill_no</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td>Shipping bill number</td></tr>
+          <tr><td><code>sbill_date</code></td><td>date</td><td><span class="badge-opt">Optional</span></td><td>Format: <code>YYYY-MM-DD</code></td></tr>
+          <tr><td><code>ref_invoice_no</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td>Reference / credit note invoice no</td></tr>
+          <tr><td><code>cont_no</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td>Container number</td></tr>
+          <tr><td><code>delivery_mode</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td></td></tr>
+          <tr><td><code>taxable_amount</code></td><td>decimal</td><td><span class="badge-opt">Optional</span></td><td>Total taxable value</td></tr>
+          <tr><td><code>cgst_amount</code></td><td>decimal</td><td><span class="badge-opt">Optional</span></td><td></td></tr>
+          <tr><td><code>sgst_amount</code></td><td>decimal</td><td><span class="badge-opt">Optional</span></td><td></td></tr>
+          <tr><td><code>igst_amount</code></td><td>decimal</td><td><span class="badge-opt">Optional</span></td><td></td></tr>
+          <tr><td><code>round_off</code></td><td>decimal</td><td><span class="badge-opt">Optional</span></td><td>Positive or negative round-off</td></tr>
+          <tr><td><code>total_amount</code></td><td>decimal</td><td><span class="badge-opt">Optional</span></td><td>Final payable amount</td></tr>
+          <tr><td><code>status</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td><code>draft</code> (default) · <code>sent</code> · <code>paid</code> · <code>cancelled</code></td></tr>
+          <tr><td><code>remarks</code></td><td>string</td><td><span class="badge-opt">Optional</span></td><td>Internal notes</td></tr>
+          <tr><td><code>e_invoice_file</code></td><td>File</td><td><span class="badge-opt">Optional</span></td><td>PDF / image upload → stored in Cloudinary</td></tr>
+          <tr><td><code>items</code></td><td>JSON string</td><td><span class="badge-opt">Optional</span></td><td>Stringified array of line item objects</td></tr>
+        </tbody>
+      </table>
+
+      <h4>items[ ] — Each Item Object</h4>
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>sr_no</code></td><td>number</td><td>Auto-set to index+1 if omitted</td></tr>
+          <tr><td><code>product_name</code></td><td>string</td><td>Service / product description</td></tr>
+          <tr><td><code>hsn_sac</code></td><td>string</td><td>HSN / SAC code</td></tr>
+          <tr><td><code>qty</code></td><td>number</td><td>Default: <code>1</code></td></tr>
+          <tr><td><code>uom</code></td><td>string</td><td>Unit of measure e.g. <code>JOB</code>, <code>KG</code>, <code>CBM</code></td></tr>
+          <tr><td><code>rate</code></td><td>decimal</td><td>Unit rate</td></tr>
+          <tr><td><code>taxable_value</code></td><td>decimal</td><td>qty × rate (after discount)</td></tr>
+          <tr><td><code>cgst_rate</code></td><td>decimal</td><td>CGST % e.g. <code>9</code></td></tr>
+          <tr><td><code>cgst_amount</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>sgst_rate</code></td><td>decimal</td><td>SGST % e.g. <code>9</code></td></tr>
+          <tr><td><code>sgst_amount</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>igst_rate</code></td><td>decimal</td><td>IGST % e.g. <code>18</code></td></tr>
+          <tr><td><code>igst_amount</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>discount</code></td><td>decimal</td><td>Discount amount</td></tr>
+          <tr><td><code>total</code></td><td>decimal</td><td>taxable_value + all tax amounts</td></tr>
+          <tr><td><code>item_note</code></td><td>string</td><td>Line-level note / remark</td></tr>
+        </tbody>
+      </table>
+
+      <h4>Example Request Body</h4>
+      <pre><span class="json-comment">// multipart/form-data fields:</span>
+customer_id      = <span class="json-num">7</span>
+invoice_date     = <span class="json-str">"2026-06-12"</span>
+place_of_supply  = <span class="json-str">"Maharashtra"</span>
+invoice_type     = <span class="json-str">"tax_invoice"</span>
+taxable_amount   = <span class="json-num">50000</span>
+igst_amount      = <span class="json-num">9000</span>
+total_amount     = <span class="json-num">59000</span>
+status           = <span class="json-str">"draft"</span>
+items            = <span class="json-str">'[{"product_name":"Ocean Freight","hsn_sac":"9965","qty":1,"rate":50000,"taxable_value":50000,"igst_rate":18,"igst_amount":9000,"total":59000}]'</span></pre>
+
+      <div class="response-label">Response <span class="status-pill status-200">200 OK</span></div>
+      <pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"Invoice created successfully"</span>,
+  <span class="json-key">"invoice_id"</span>: <span class="json-num">42</span>
+}</pre>
+
+      <div class="response-label">Error Responses</div>
+      <table>
+        <thead><tr><th>Status</th><th>Condition</th></tr></thead>
+        <tbody>
+          <tr><td><span class="status-pill status-400">400</span></td><td>Missing <code>customer_id</code>, <code>invoice_date</code>, or <code>place_of_supply</code></td></tr>
+          <tr><td><span class="status-pill status-400">400</span></td><td>Invalid items JSON string</td></tr>
+          <tr><td><span class="status-pill status-500">500</span></td><td>DB error while generating invoice number or inserting</td></tr>
+          <tr><td><span class="status-pill status-400">207</span></td><td>Invoice header saved but items insert failed (partial success)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       6. PUT /api/invoices/:id
+  ════════════════════════════════════════ -->
+  <div class="section-title">Endpoint 6</div>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method put">PUT</span>
+      <span class="endpoint-path">/api/invoices/:id</span>
+      <span class="endpoint-desc">Update invoice + items</span>
+      <span class="auth-badge jwt">🔐 JWT</span>
+    </div>
+    <div class="endpoint-body">
+
+      <div class="callout info">
+        <span class="callout-icon">🔄</span>
+        <span><strong>Smart Item Upsert:</strong> Send <code>id</code> in an item to update it. Omit <code>id</code> to insert a new item. Items not included in the request are automatically deleted.</span>
+      </div>
+
+      <h4>Path Parameters</h4>
+      <table>
+        <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>number</td><td>Invoice primary key</td></tr>
+        </tbody>
+      </table>
+
+      <h4>Updatable Header Fields</h4>
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>customer_id</code></td><td>number</td><td></td></tr>
+          <tr><td><code>job_id</code></td><td>number</td><td></td></tr>
+          <tr><td><code>invoice_prefix</code></td><td>string</td><td>Can be manually overridden in update</td></tr>
+          <tr><td><code>invoice_number</code></td><td>string</td><td>Can be manually overridden in update</td></tr>
+          <tr><td><code>invoice_post</code></td><td>string</td><td></td></tr>
+          <tr><td><code>invoice_type</code></td><td>string</td><td></td></tr>
+          <tr><td><code>invoice_date</code></td><td>date</td><td></td></tr>
+          <tr><td><code>place_of_supply</code></td><td>string</td><td></td></tr>
+          <tr><td><code>ship_to</code></td><td>string</td><td></td></tr>
+          <tr><td><code>rev_charge</code></td><td>0/1</td><td></td></tr>
+          <tr><td><code>shipper</code></td><td>string</td><td></td></tr>
+          <tr><td><code>bl_no</code></td><td>string</td><td></td></tr>
+          <tr><td><code>sbill_no</code></td><td>string</td><td></td></tr>
+          <tr><td><code>sbill_date</code></td><td>date</td><td></td></tr>
+          <tr><td><code>ref_invoice_no</code></td><td>string</td><td></td></tr>
+          <tr><td><code>cont_no</code></td><td>string</td><td></td></tr>
+          <tr><td><code>delivery_mode</code></td><td>string</td><td></td></tr>
+          <tr><td><code>taxable_amount</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>cgst_amount</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>sgst_amount</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>igst_amount</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>round_off</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>total_amount</code></td><td>decimal</td><td></td></tr>
+          <tr><td><code>status</code></td><td>string</td><td></td></tr>
+          <tr><td><code>remarks</code></td><td>string</td><td></td></tr>
+          <tr><td><code>e_invoice_file</code></td><td>File</td><td>Uploading new file deletes old one from Cloudinary</td></tr>
+          <tr><td><code>items</code></td><td>JSON string</td><td>See smart upsert rules above</td></tr>
+        </tbody>
+      </table>
+
+      <div class="response-label">Response <span class="status-pill status-200">200 OK</span></div>
+      <pre>{ <span class="json-key">"message"</span>: <span class="json-str">"Invoice updated successfully"</span> }</pre>
+
+      <div class="response-label">Error Responses</div>
+      <table>
+        <thead><tr><th>Status</th><th>Condition</th></tr></thead>
+        <tbody>
+          <tr><td><span class="status-pill status-400">404</span></td><td>Invoice ID not found</td></tr>
+          <tr><td><span class="status-pill status-500">500</span></td><td>Header or item update failed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       7. DELETE /api/invoices/:id
+  ════════════════════════════════════════ -->
+  <div class="section-title">Endpoint 7</div>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method delete">DELETE</span>
+      <span class="endpoint-path">/api/invoices/:id</span>
+      <span class="endpoint-desc">Delete invoice permanently</span>
+      <span class="auth-badge admin">🛡️ SUPER_ADMIN</span>
+    </div>
+    <div class="endpoint-body">
+
+      <div class="callout danger">
+        <span class="callout-icon">⚠️</span>
+        <span><strong>SUPER_ADMIN only.</strong> This action is irreversible. Invoice items are deleted via <code>ON DELETE CASCADE</code>. The associated e-invoice file is also removed from Cloudinary.</span>
+      </div>
+
+      <h4>Path Parameters</h4>
+      <table>
+        <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>number</td><td>Invoice primary key</td></tr>
+        </tbody>
+      </table>
+
+      <div class="response-label">Response <span class="status-pill status-200">200 OK</span></div>
+      <pre>{ <span class="json-key">"message"</span>: <span class="json-str">"Invoice deleted successfully"</span> }</pre>
+
+      <div class="response-label">Error Responses</div>
+      <table>
+        <thead><tr><th>Status</th><th>Condition</th></tr></thead>
+        <tbody>
+          <tr><td><span class="status-pill status-403">403</span></td><td>User is not SUPER_ADMIN</td></tr>
+          <tr><td><span class="status-pill status-400">404</span></td><td>Invoice ID not found</td></tr>
+          <tr><td><span class="status-pill status-500">500</span></td><td>Delete query failed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════
+       QUICK REFERENCE
+  ════════════════════════════════════════ -->
+  <div class="section-title">Quick Reference</div>
+  <table style="margin-top:8px;">
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>Endpoint</th>
+        <th>Description</th>
+        <th>Auth</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="method get" style="display:inline-block;">GET</span></td><td><code>/api/invoices</code></td><td>List all (filterable)</td><td>JWT</td></tr>
+      <tr><td><span class="method get" style="display:inline-block;">GET</span></td><td><code>/api/invoices/summary/monthly</code></td><td>Monthly totals</td><td>JWT</td></tr>
+      <tr><td><span class="method get" style="display:inline-block;">GET</span></td><td><code>/api/invoices/:id</code></td><td>Single invoice + items</td><td>JWT</td></tr>
+      <tr><td><span class="method get" style="display:inline-block;">GET</span></td><td><code>/api/invoices/:id/print</code></td><td>Full print data</td><td>JWT</td></tr>
+      <tr><td><span class="method post" style="display:inline-block;">POST</span></td><td><code>/api/invoices</code></td><td>Create (auto invoice no.)</td><td>JWT</td></tr>
+      <tr><td><span class="method put" style="display:inline-block;">PUT</span></td><td><code>/api/invoices/:id</code></td><td>Update + smart upsert items</td><td>JWT</td></tr>
+      <tr><td><span class="method delete" style="display:inline-block;">DELETE</span></td><td><code>/api/invoices/:id</code></td><td>Delete permanently</td><td>SUPER_ADMIN</td></tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:48px; padding-top:20px; border-top:1px solid var(--border); text-align:center; color:var(--gray-500); font-size:11px;">
+    Logistics Management ERP · Invoice API Documentation · Generated June 2026
+  </div>
+</div>
+
+</body>
+</html>
