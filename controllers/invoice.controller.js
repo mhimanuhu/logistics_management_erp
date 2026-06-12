@@ -215,8 +215,6 @@ exports.createInvoice = (req, res) => {
   const {
     customer_id,
     job_id,
-    invoice_prefix,
-    invoice_number,
     invoice_post,
     invoice_type,
     invoice_date,
@@ -240,6 +238,15 @@ exports.createInvoice = (req, res) => {
     remarks,
   } = req.body;
 
+  // ── Auto-generate invoice_prefix (KLS/YY-YY/) based on Indian financial year (Apr–Mar)
+  const now = new Date();
+  const month = now.getMonth(); // 0-indexed; 3 = April
+  const year  = now.getFullYear();
+  const fyStart = month >= 3 ? year : year - 1;         // April or later → current year
+  const fyEnd   = (fyStart + 1).toString().slice(-2);   // last 2 digits of end year
+  const fyStartStr = fyStart.toString().slice(-2);      // last 2 digits of start year
+  const invoice_prefix = `KLS/${fyStartStr}-${fyEnd}/`;
+
   // Parse items — may arrive as JSON string via multipart/form-data
   let items = req.body.items;
   if (typeof items === "string") {
@@ -254,60 +261,76 @@ exports.createInvoice = (req, res) => {
   const eInvoiceFile = req.file ? req.file.path : null;
   const eInvoicePublicId = req.file ? req.file.filename : null;
 
-  if (!customer_id || !invoice_number || !invoice_date) {
-    return res.status(400).json({ message: "Customer, invoice number and date are required" });
+  if (!customer_id || !invoice_date) {
+    return res.status(400).json({ message: "Customer and invoice date are required" });
   }
 
   if (!place_of_supply) {
     return res.status(400).json({ message: "Place of supply is required" });
   }
 
-  const headerSql = `
-    INSERT INTO invoices (
-      customer_id, created_by, job_id,
-      invoice_prefix, invoice_number, invoice_post,
-      invoice_type, invoice_date,
-      place_of_supply, ship_to, rev_charge,
-      shipper, bl_no, sbill_no, sbill_date,
-      ref_invoice_no, cont_no, delivery_mode,
-      e_invoice_file, e_invoice_public_id,
-      taxable_amount, cgst_amount, sgst_amount, igst_amount,
-      round_off, total_amount, status, remarks
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  // ── Auto-generate invoice_number: query MAX for the current financial-year prefix
+  const seqSql = `
+    SELECT MAX(CAST(invoice_number AS UNSIGNED)) AS max_num
+    FROM invoices
+    WHERE invoice_prefix = ?
   `;
 
-  const headerValues = [
-    customer_id,
-    createdBy,
-    job_id || null,
-    invoice_prefix || "KSL/25-26/",
-    invoice_number,
-    invoice_post || null,
-    invoice_type || "tax_invoice",
-    invoice_date,
-    place_of_supply || null,
-    ship_to || null,
-    rev_charge || 0,
-    shipper || null,
-    bl_no || null,
-    sbill_no || null,
-    sbill_date || null,
-    ref_invoice_no || null,
-    cont_no || null,
-    delivery_mode || null,
-    eInvoiceFile,
-    eInvoicePublicId,
-    taxable_amount || 0,
-    cgst_amount || 0,
-    sgst_amount || 0,
-    igst_amount || 0,
-    round_off || 0,
-    total_amount || 0,
-    status || "draft",
-    remarks || null
-  ];
+  db.query(seqSql, [invoice_prefix], (seqErr, seqRows) => {
+    if (seqErr) {
+      console.error("Invoice sequence query error:", seqErr);
+      return res.status(500).json({ message: "Failed to generate invoice number" });
+    }
 
-  db.query(headerSql, headerValues, (err, result) => {
+    const maxNum = seqRows[0].max_num || 0;
+    const invoice_number = String(maxNum + 1).padStart(3, "0"); // e.g. "001", "002"
+
+    const headerSql = `
+      INSERT INTO invoices (
+        customer_id, created_by, job_id,
+        invoice_prefix, invoice_number, invoice_post,
+        invoice_type, invoice_date,
+        place_of_supply, ship_to, rev_charge,
+        shipper, bl_no, sbill_no, sbill_date,
+        ref_invoice_no, cont_no, delivery_mode,
+        e_invoice_file, e_invoice_public_id,
+        taxable_amount, cgst_amount, sgst_amount, igst_amount,
+        round_off, total_amount, status, remarks
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `;
+
+    const headerValues = [
+      customer_id,
+      createdBy,
+      job_id || null,
+      invoice_prefix,
+      invoice_number,
+      invoice_post || null,
+      invoice_type || "tax_invoice",
+      invoice_date,
+      place_of_supply || null,
+      ship_to || null,
+      rev_charge || 0,
+      shipper || null,
+      bl_no || null,
+      sbill_no || null,
+      sbill_date || null,
+      ref_invoice_no || null,
+      cont_no || null,
+      delivery_mode || null,
+      eInvoiceFile,
+      eInvoicePublicId,
+      taxable_amount || 0,
+      cgst_amount || 0,
+      sgst_amount || 0,
+      igst_amount || 0,
+      round_off || 0,
+      total_amount || 0,
+      status || "draft",
+      remarks || null
+    ];
+
+    db.query(headerSql, headerValues, (err, result) => {
     if (err) {
       console.error("Create invoice error:", err);
       if (err.code === "ER_DUP_ENTRY") {
@@ -364,7 +387,8 @@ exports.createInvoice = (req, res) => {
     } else {
       logAndRespond(createdBy, invoiceId, res);
     }
-  });
+    }); // end db.query(headerSql)
+  }); // end db.query(seqSql)
 };
 
 function logAndRespond(userId, invoiceId, res) {
