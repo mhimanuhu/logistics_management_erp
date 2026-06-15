@@ -20,7 +20,7 @@ function getIp(req) {
 
 // ── EXPORT PHASE 1 ──
 const EXP1_FIELDS = [
-  "clearing_location", "booking_line", "forwarder", "container_no", "container_size",
+  "clearing_location", "booking_line", "booking_no", "forwarder", "container_no", "container_size",
   "line_no", "custom_seal_rfid", "pol", "pod", "fpod", "vessel_name", "etd",
   "container_pickup_loc", "scheme_code", "remarks"
 ];
