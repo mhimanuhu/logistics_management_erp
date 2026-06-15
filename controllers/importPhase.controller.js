@@ -14,9 +14,9 @@ function getIp(req) {
   return req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
 }
 
-// ── IMPORT PHASE 1 ──
+// container_no & container_size removed — now managed via job_containers table
 const IMP1_FIELDS = [
-  "shipping_line", "mbl_no", "hbl_no", "container_no", "container_size",
+  "shipping_line", "mbl_no", "hbl_no",
   "eta", "port", "tpt_name", "trailer_no", "transporter_name",
   "diesel_adv", "cash_adv", "freight", "remarks"
 ];

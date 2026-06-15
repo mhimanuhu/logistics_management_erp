@@ -19,8 +19,9 @@ function getIp(req) {
 }
 
 // ── EXPORT PHASE 1 ──
+// container_no & container_size removed — now managed via job_containers table
 const EXP1_FIELDS = [
-  "clearing_location", "booking_line", "booking_no", "forwarder", "container_no", "container_size",
+  "clearing_location", "booking_line", "booking_no", "forwarder",
   "line_no", "custom_seal_rfid", "pol", "pod", "fpod", "vessel_name", "etd",
   "container_pickup_loc", "scheme_code", "remarks"
 ];
