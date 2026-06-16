@@ -4,6 +4,7 @@ const jobController = require("../controllers/job.controller");
 const exportPhase = require("../controllers/exportPhase.controller");
 const importPhase = require("../controllers/importPhase.controller");
 const chargesController = require("../controllers/charges.controller");
+const containersController = require("../controllers/containers.controller");
 const authMiddleware = require("../middleware/auth.middleware");
 const upload = require("../middleware/upload.middleware");
 
@@ -43,6 +44,13 @@ router.post("/:id/import/phase/2/complete", authMiddleware, importPhase.complete
 // ── Charges ──
 router.get("/:id/charges", authMiddleware, chargesController.getCharges);
 router.put("/:id/charges", authMiddleware, chargesController.updateCharges);
+
+// ── Containers ──
+router.get("/:id/containers",            authMiddleware, containersController.getContainers);
+router.put("/:id/containers",            authMiddleware, containersController.syncContainers);
+router.post("/:id/containers",           authMiddleware, containersController.addContainer);
+router.patch("/:id/containers/:srNo",    authMiddleware, containersController.updateContainer);
+router.delete("/:id/containers/:srNo",   authMiddleware, containersController.deleteContainer);
 
 module.exports = router;
 

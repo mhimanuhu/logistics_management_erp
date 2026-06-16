@@ -24,6 +24,8 @@ function generateJobNo(jobType, callback) {
 // ── POST /api/jobs ──
 exports.createJob = (req, res) => {
   const { job_type, customer_id, assigned_to, remarks } = req.body;
+  // total_containers defaults to 1 if not supplied; clamped 1-99
+  const total_containers = Math.min(99, Math.max(1, parseInt(req.body.total_containers, 10) || 1));
   const created_by = req.user.id;
 
   if (!job_type || !["export", "import"].includes(job_type)) {
@@ -77,9 +79,14 @@ exports.createJob = (req, res) => {
         return res.status(500).json({ message: "Failed to generate job number" });
       }
 
-      const sql = `INSERT INTO job_entries (job_type, job_no, customer_id, created_by, assigned_to, remarks, status)
-                   VALUES (?, ?, ?, ?, ?, ?, 'draft')`;
-      const vals = [job_type, job_no, customer_id || null, created_by, assigned_to || null, remarks || null];
+      const sql = `INSERT INTO job_entries
+                     (job_type, job_no, customer_id, created_by, assigned_to, remarks, status, total_containers)
+                   VALUES (?, ?, ?, ?, ?, ?, 'draft', ?)`;
+      const vals = [
+        job_type, job_no, customer_id || null,
+        created_by, assigned_to || null, remarks || null,
+        total_containers
+      ];
 
       db.query(sql, vals, (err2, result) => {
         if (err2) {
@@ -94,6 +101,19 @@ exports.createJob = (req, res) => {
         db.query(`INSERT INTO ${phase1Table} (job_id) VALUES (?)`, [jobId], (err3) => {
           if (err3) console.error("Insert phase1 error:", err3);
 
+          // Seed job_containers — one empty row per total_containers
+          const containerRows = [];
+          const containerVals = [];
+          for (let i = 1; i <= total_containers; i++) {
+            containerRows.push("(?, ?, NULL, '40HC')");
+            containerVals.push(jobId, i);
+          }
+          db.query(
+            `INSERT IGNORE INTO job_containers (job_id, sr_no, container_no, container_size) VALUES ${containerRows.join(", ")}`,
+            containerVals,
+            (errC) => { if (errC) console.error("Insert containers error:", errC); }
+          );
+
           // Insert empty charges row
           db.query(`INSERT INTO job_charges (job_id) VALUES (?)`, [jobId], (err4) => {
             if (err4) console.error("Insert charges error:", err4);
@@ -102,11 +122,11 @@ exports.createJob = (req, res) => {
             const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
             db.query(
               `INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
-              [created_by, jobId, "CREATE", 1, `Created ${job_type} job ${job_no}`, ip],
+              [created_by, jobId, "CREATE", 1, `Created ${job_type} job ${job_no} (${total_containers} container(s))`, ip],
               () => {}
             );
 
-            res.json({ message: "Job created successfully", job_id: jobId, job_no });
+            res.json({ message: "Job created successfully", job_id: jobId, job_no, total_containers });
           });
         });
       });
