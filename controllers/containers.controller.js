@@ -4,7 +4,7 @@ function getIp(req) {
   return req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
 }
 
-const VALID_SIZES = ["20GP", "40GP", "40HC", "45HC", "20RF", "40RF"];
+
 
 // ── GET /api/jobs/:id/containers ──
 // Returns all containers for a job ordered by sr_no
@@ -42,11 +42,7 @@ exports.syncContainers = (req, res) => {
     if (!c.sr_no || typeof c.sr_no !== "number") {
       return res.status(400).json({ message: "Each container must have a numeric sr_no" });
     }
-    if (c.container_size && !VALID_SIZES.includes(c.container_size)) {
-      return res.status(400).json({
-        message: `Invalid container_size '${c.container_size}'. Allowed: ${VALID_SIZES.join(", ")}`,
-      });
-    }
+
   }
 
   // Verify job exists
@@ -62,7 +58,7 @@ exports.syncContainers = (req, res) => {
         jobId,
         c.sr_no,
         c.container_no || null,
-        c.container_size || "40HC"
+        c.container_size || null
       );
     });
 
@@ -105,11 +101,7 @@ exports.addContainer = (req, res) => {
   if (isNaN(jobId)) return res.status(400).json({ message: "Invalid job ID" });
 
   const { container_no, container_size } = req.body;
-  if (container_size && !VALID_SIZES.includes(container_size)) {
-    return res.status(400).json({
-      message: `Invalid container_size. Allowed: ${VALID_SIZES.join(", ")}`,
-    });
-  }
+
 
   // Verify job exists
   db.query("SELECT id FROM job_entries WHERE id = ?", [jobId], (err, jobs) => {
@@ -126,7 +118,7 @@ exports.addContainer = (req, res) => {
 
         db.query(
           "INSERT INTO job_containers (job_id, sr_no, container_no, container_size) VALUES (?, ?, ?, ?)",
-          [jobId, srNo, container_no || null, container_size || "40HC"],
+          [jobId, srNo, container_no || null, container_size || null],
           (err3, result) => {
             if (err3) {
               console.error("[container add error]", err3.message);
@@ -162,11 +154,7 @@ exports.updateContainer = (req, res) => {
   if (isNaN(jobId) || isNaN(srNo)) return res.status(400).json({ message: "Invalid ID" });
 
   const { container_no, container_size } = req.body;
-  if (container_size && !VALID_SIZES.includes(container_size)) {
-    return res.status(400).json({
-      message: `Invalid container_size. Allowed: ${VALID_SIZES.join(", ")}`,
-    });
-  }
+
 
   const updates = {};
   if (container_no  !== undefined) updates.container_no   = container_no  === "" ? null : container_no;
