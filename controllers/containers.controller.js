@@ -24,7 +24,7 @@ exports.getContainers = (req, res) => {
     }
   );
 };
-
+// New Api
 // ── PUT /api/jobs/:id/containers ──
 // Full replace — accepts an array of containers and syncs the DB.
 // Body: { containers: [ { sr_no, container_no, container_size }, ... ] }
