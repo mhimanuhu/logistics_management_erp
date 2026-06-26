@@ -9,7 +9,7 @@
 module.exports = {
   // ── Company Identity ────────────────────────────
   company_name: "KRISHNAM SHIPPING LLP",
-  address_line1: "OFFICE NO.3, KHANDAL BHAWAN, GOKULPURA",
+  address_line1: "OFFICE NO. 3, KHANDAL BHAWAN, GOKULPURA",
   address_line2: "NEAR ICD CONCOR",
   city: "JAIPUR",
   state: "Rajasthan",
@@ -27,20 +27,20 @@ module.exports = {
 
   // ── Bank Details ────────────────────────────────
   bank_name: "ICICI Bank",
-  bank_branch: "KALAWAR ROAD",
+  bank_branch: "Kalwar Road",
   bank_acc_name: "KRISHNAM SHIPPING LLP",
   bank_acc_number: "4181055002770",
   bank_ifsc: "ICIC0004181",
   bank_upi_id: "9828013190.ibz@icici",
 
-  // ── Invoice Defaults ───────────────────────────
+  // ── Invoice Defaults ────────────────────────────
   default_invoice_prefix: "KSL/25-26/",
 
-  // ── Terms & Conditions ─────────────────────────
+  // ── Terms & Conditions ──────────────────────────
   terms: [
-    "Subject to our home Jurisdiction.",
-    "Payment acceptable by Cheque / NEFT",
-    "18% Interest applicable for payment done after due date",
-    "For any discrepancy please notify within 7 days of bill",
+    "Subject to Jaipur Jurisdiction.",
+    "Payment accepted by Cheque / NEFT.",
+    "Interest @ 18% per annum will be charged on payments made after the due date.",
+    "Any discrepancy in this invoice should be notified within 7 days from the date of the invoice.",
   ],
 };
