@@ -7,7 +7,7 @@ const { Readable } = require("stream");
 // ─────────────────────────────────────────────────────────────────────────────
 //  Constants
 // ─────────────────────────────────────────────────────────────────────────────
-const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB hard limit for Cloudinary uploads
+const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB hard limit for Cloudinary uploads
 const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const ALLOWED_MIMES = [...ALLOWED_IMAGE_MIMES, "application/pdf"];
 
@@ -39,9 +39,9 @@ function buildMulter(allowedMimes, maxSizeBytes) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Compression / rejection middleware
-//  • PDF > 1 MB  → HTTP 400
-//  • Image > 1 MB → sharp compress (quality loop) until ≤ 1 MB
-//  • File ≤ 1 MB  → pass through unchanged
+//  • PDF > 25 MB  → HTTP 400
+//  • Image > 25 MB → sharp compress (quality loop) until ≤ 25 MB
+//  • File ≤ 25 MB  → pass through unchanged
 // ─────────────────────────────────────────────────────────────────────────────
 async function compressOrReject(req, _res, next) {
   if (!req.file) return next(); // no file uploaded — nothing to do
@@ -57,7 +57,7 @@ async function compressOrReject(req, _res, next) {
   // ── PDF: reject if oversized ──────────────────────────────────────────────
   if (fileIsPdf) {
     if (buffer.length > MAX_SIZE_BYTES) {
-      const err = new Error("PDF is too large. Please upload a PDF under 1 MB.");
+      const err = new Error("PDF is too large. Please upload a PDF under 25 MB.");
       err.status = 400;
       return next(err);
     }
@@ -65,13 +65,13 @@ async function compressOrReject(req, _res, next) {
     return next();
   }
 
-  // ── Image: pass through if already ≤ 1 MB ────────────────────────────────
+  // ── Image: pass through if already ≤ 25 MB ───────────────────────────────
   if (buffer.length <= MAX_SIZE_BYTES) {
     console.log(`[UPLOAD] Image "${originalname}": ${originalKB} KB — within limit, skipping compression.`);
     return next();
   }
 
-  // ── Image: compress iteratively until ≤ 1 MB ─────────────────────────────
+  // ── Image: compress iteratively until ≤ 25 MB ────────────────────────────
   console.log(`[UPLOAD] Image "${originalname}": ${originalKB} KB — starting compression…`);
 
   const qualitySteps = [80, 65, 50, 35, 20];
@@ -98,10 +98,10 @@ async function compressOrReject(req, _res, next) {
   }
 
   if (!compressedBuffer) {
-    // Absolute fallback: use the lowest-quality result even if it technically went above 1 MB.
-    // In practice, a real image should always compress below 1 MB at quality=20.
+    // Absolute fallback: use the lowest-quality result even if it technically went above 25 MB.
+    // In practice, a real image should always compress below 25 MB at quality=20.
     console.warn(
-      `[UPLOAD] Image "${originalname}": could not compress below 1 MB — uploading best-effort result.`
+      `[UPLOAD] Image "${originalname}": could not compress below 25 MB — uploading best-effort result.`
     );
     compressedBuffer = await sharp(buffer)
       .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
@@ -181,7 +181,7 @@ function cloudinaryUpload(folder) {
 //    uploadInvoiceFile("e_invoice_file") ← invoices
 // ─────────────────────────────────────────────────────────────────────────────
 
-const jobMulter = buildMulter(ALLOWED_MIMES, MAX_SIZE_BYTES * 10);
+const jobMulter = buildMulter(ALLOWED_MIMES, MAX_SIZE_BYTES);
 
 /**
  * Middleware stack for job-phase image/PDF uploads (folder: logistics-erp)
@@ -198,7 +198,7 @@ function upload(fieldName) {
 
 const invoiceMulter = buildMulter(
   ["image/jpeg", "image/png", "image/webp", "application/pdf"],
-  MAX_SIZE_BYTES * 10
+  MAX_SIZE_BYTES
 );
 
 /**
