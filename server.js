@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 require("dotenv").config();
 
 const app = express();
@@ -27,8 +28,9 @@ app.use(
 app.options("*", cors());
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(helmet());
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // API Routes
 const routes = require("./routes");
@@ -48,13 +50,23 @@ app.use((err, req, res, next) => {
     err.status ||
     err.statusCode ||
     (isMulter || isUpload ? 400 : 500);
-  let message =
-    (err && typeof err.message === "string" && err.message) ||
-    (err && err.error && typeof err.error.message === "string" && err.error.message) ||
-    (typeof err === "string" ? err : "");
-  if (!message) message = "Upload or server error";
-  if (typeof message !== "string") message = String(message);
+
+  // Log full error on the server for debugging
   console.error("Request error:", err.message || err.code || err);
+
+  // Only expose error details for client-side errors (4xx).
+  // For 5xx errors, return a generic message to avoid leaking internals.
+  let message;
+  if (status < 500) {
+    message =
+      (err && typeof err.message === "string" && err.message) ||
+      (err && err.error && typeof err.error.message === "string" && err.error.message) ||
+      (typeof err === "string" ? err : "");
+    if (!message) message = "Bad request";
+    if (typeof message !== "string") message = String(message);
+  } else {
+    message = "Internal server error";
+  }
   res.status(status).json({ message });
 });
 

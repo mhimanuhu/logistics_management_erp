@@ -31,7 +31,7 @@ exports.getExportPhase1 = (req, res) => {
   db.query("SELECT * FROM export_phase1 WHERE job_id = ?", [jobId], (err, rows) => {
     if (err) {
       console.error("[export_phase1 get error]", err.message);
-      return res.status(500).json({ message: "Failed to fetch phase 1", error: err.message });
+      return res.status(500).json({ message: "Failed to fetch phase 1" });
     }
     if (rows.length === 0) return res.status(404).json({ message: "Phase 1 data not found" });
     res.json(rows[0]);
@@ -71,7 +71,7 @@ exports.completeExportPhase1 = (req, res) => {
   db.query(`UPDATE export_phase1 SET is_complete = 1, completed_at = NOW() WHERE job_id = ?`, [jobId], (err, result) => {
     if (err) {
       console.error("[export_phase1 complete error]", err.message);
-      return res.status(500).json({ message: "Failed to complete phase 1", error: err.message });
+      return res.status(500).json({ message: "Failed to complete phase 1" });
     }
     if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 1 not found" });
 
@@ -97,7 +97,7 @@ exports.getExportPhase2 = (req, res) => {
     db.query("SELECT * FROM export_phase2 WHERE job_id = ?", [jobId], (err2, rows) => {
       if (err2) {
         console.error("[export_phase2 get error]", err2.message);
-        return res.status(500).json({ message: "Failed to fetch phase 2", error: err2.message });
+        return res.status(500).json({ message: "Failed to fetch phase 2" });
       }
       if (rows.length === 0) return res.status(404).json({ message: "Phase 2 data not found" });
       res.json(rows[0]);
@@ -143,14 +143,14 @@ exports.completeExportPhase2 = (req, res) => {
   checkPrevPhase("export", jobId, 2, (err, ok) => {
     if (err) {
       console.error("[export_phase2 prevPhase check error]", err.message);
-      return res.status(500).json({ message: "Server error", error: err.message });
+      return res.status(500).json({ message: "Server error" });
     }
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     db.query(`UPDATE export_phase2 SET is_complete = 1, completed_at = NOW() WHERE job_id = ?`, [jobId], (err2, result) => {
       if (err2) {
         console.error("[export_phase2 complete error]", err2.message);
-        return res.status(500).json({ message: "Failed to complete phase 2", error: err2.message });
+        return res.status(500).json({ message: "Failed to complete phase 2" });
       }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 2 not found" });
 
@@ -166,7 +166,7 @@ exports.completeExportPhase2 = (req, res) => {
 
 // ── EXPORT PHASE 3 ──
 const EXP3_FIELDS = [
-  "invoice_no", "invoice_date", "cargo_description", "currency", "total_packets",
+  "invoice_no", "invoice_date", "cargo_description", "currency", "value", "total_packets",
   "net_weight", "gross_weight", "shipping_bill_no", "shipping_bill_date",
   "leo_date", "line_handover_date", "port_handover_date", "remarks"
 ];
@@ -180,7 +180,7 @@ exports.getExportPhase3 = (req, res) => {
     db.query("SELECT * FROM export_phase3 WHERE job_id = ?", [jobId], (err2, rows) => {
       if (err2) {
         console.error("[export_phase3 get error]", err2.message);
-        return res.status(500).json({ message: "Failed to fetch phase 3", error: err2.message });
+        return res.status(500).json({ message: "Failed to fetch phase 3" });
       }
       if (rows.length === 0) return res.status(404).json({ message: "Phase 3 data not found" });
       res.json(rows[0]);
@@ -242,14 +242,14 @@ exports.completeExportPhase3 = (req, res) => {
   checkPrevPhase("export", jobId, 3, (err, ok) => {
     if (err) {
       console.error("[export_phase3 prevPhase check error]", err.message);
-      return res.status(500).json({ message: "Server error", error: err.message });
+      return res.status(500).json({ message: "Server error" });
     }
     if (!ok) return res.status(403).json({ message: "Previous phase not complete" });
 
     db.query(`UPDATE export_phase3 SET is_complete = 1, completed_at = NOW() WHERE job_id = ?`, [jobId], (err2, result) => {
       if (err2) {
         console.error("[export_phase3 complete error]", err2.message);
-        return res.status(500).json({ message: "Failed to complete phase 3", error: err2.message });
+        return res.status(500).json({ message: "Failed to complete phase 3" });
       }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 3 not found" });
 

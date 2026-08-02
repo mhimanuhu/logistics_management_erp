@@ -91,7 +91,7 @@ exports.createJob = (req, res) => {
       db.query(sql, vals, (err2, result) => {
         if (err2) {
           console.error("Create job error:", err2);
-          return res.status(500).json({ message: "Failed to create job", error: err2.message, sql_code: err2.code });
+          return res.status(500).json({ message: "Failed to create job" });
         }
 
         const jobId = result.insertId;
