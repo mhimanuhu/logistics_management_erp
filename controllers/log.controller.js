@@ -26,8 +26,8 @@ exports.getLogs = (req, res) => {
       j.job_no,
       j.job_type
     FROM logs l
-    JOIN users u ON l.user_id = u.id
-    JOIN roles r ON r.id = u.role_id
+    LEFT JOIN users u ON l.user_id = u.id
+    LEFT JOIN roles r ON r.id = u.role_id
     LEFT JOIN job_entries j ON l.job_id = j.id
     ORDER BY l.created_at DESC
   `;

@@ -2,6 +2,10 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 
+function getIp(req) {
+  return req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
+}
+
 /**
  * Login Controller
  * Authenticates user with email and password
@@ -46,6 +50,12 @@ exports.login = (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!isMatch) {
+      // Log failed login attempt
+      db.query(
+        "INSERT INTO logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)",
+        [user.id, "LOGIN_FAILED", `Failed login attempt for ${email}`, getIp(req)],
+        () => {}
+      );
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
@@ -57,6 +67,13 @@ exports.login = (req, res) => {
     );
 
     // Return response
+    // Log successful login
+    db.query(
+      "INSERT INTO logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)",
+      [user.id, "LOGIN_SUCCESS", `Successful login for ${email}`, getIp(req)],
+      () => {}
+    );
+
     res.json({
       message: "Login successful",
       token,

@@ -77,8 +77,9 @@ exports.completeImportPhase1 = (req, res) => {
 
     db.query(`INSERT IGNORE INTO import_phase2 (job_id) VALUES (?)`, [jobId], () => { });
     db.query(`UPDATE job_entries SET current_phase = 2, status = 'in_progress' WHERE id = ?`, [jobId], () => { });
+    const userId = req.user && req.user.id ? req.user.id : null;
     db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
-      [req.user.id, jobId, "PHASE_COMPLETE", 1, "Completed import phase 1", getIp(req)], () => { });
+      [userId, jobId, "PHASE_COMPLETE", 1, "Completed import phase 1", getIp(req)], () => { });
     res.json({ message: "Phase 1 marked complete" });
   });
 };
@@ -158,8 +159,9 @@ exports.completeImportPhase2 = (req, res) => {
       if (result.affectedRows === 0) return res.status(404).json({ message: "Phase 2 not found" });
 
       db.query(`UPDATE job_entries SET status = 'completed' WHERE id = ?`, [jobId], () => { });
+      const userId = req.user && req.user.id ? req.user.id : null;
       db.query(`INSERT INTO logs (user_id, job_id, action, phase, description, ip_address) VALUES (?,?,?,?,?,?)`,
-        [req.user.id, jobId, "PHASE_COMPLETE", 2, "Completed import phase 2 — job complete", getIp(req)], () => { });
+        [userId, jobId, "PHASE_COMPLETE", 2, "Completed import phase 2 — job complete", getIp(req)], () => { });
       res.json({ message: "Phase 2 marked complete — job completed" });
     });
   });

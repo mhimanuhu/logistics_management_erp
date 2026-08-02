@@ -2,6 +2,10 @@ const db = require("../config/db");
 const cloudinary = require("../config/cloudinary");
 const company = require("../config/company");
 
+function getIp(req) {
+  return req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
+}
+
 // ─────────────────────────────────────────────────────────
 //  GET /api/invoices — List all invoices
 //  Uses the v_invoice_summary view for joined data.
@@ -377,24 +381,23 @@ exports.createInvoice = (req, res) => {
           // Invoice was created but items failed — return partial success
           return res.status(207).json({
             message: "Invoice created but some items failed to save",
-            invoice_id: invoiceId,
-            items_error: itemErr.message
+            invoice_id: invoiceId
           });
         }
 
-        logAndRespond(createdBy, invoiceId, res);
+        logAndRespond(createdBy, invoiceId, req, res);
       });
     } else {
-      logAndRespond(createdBy, invoiceId, res);
+      logAndRespond(createdBy, invoiceId, req, res);
     }
     }); // end db.query(headerSql)
   }); // end db.query(seqSql)
 };
 
-function logAndRespond(userId, invoiceId, res) {
+function logAndRespond(userId, invoiceId, req, res) {
   db.query(
-    "INSERT INTO logs (user_id, action, description) VALUES (?, ?, ?)",
-    [userId, "CREATE_INVOICE", `Created invoice ID ${invoiceId}`],
+    "INSERT INTO logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)",
+    [userId, "CREATE_INVOICE", `Created invoice ID ${invoiceId}`, getIp(req)],
     () => {}
   );
 
@@ -614,8 +617,8 @@ exports.updateInvoice = (req, res) => {
 
       // Log
       db.query(
-        "INSERT INTO logs (user_id, action, description) VALUES (?, ?, ?)",
-        [userId, "UPDATE_INVOICE", `Updated invoice ID ${invoiceId}`],
+        "INSERT INTO logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)",
+        [userId, "UPDATE_INVOICE", `Updated invoice ID ${invoiceId}`, getIp(req)],
         () => {}
       );
 
@@ -669,8 +672,8 @@ exports.deleteInvoice = (req, res) => {
 
       // Log
       db.query(
-        "INSERT INTO logs (user_id, action, description) VALUES (?, ?, ?)",
-        [req.user.id, "DELETE_INVOICE", `Deleted invoice ID ${invoiceId}`],
+        "INSERT INTO logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)",
+        [req.user.id, "DELETE_INVOICE", `Deleted invoice ID ${invoiceId}`, getIp(req)],
         () => {}
       );
 

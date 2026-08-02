@@ -18,7 +18,7 @@ exports.getContainers = (req, res) => {
     (err, rows) => {
       if (err) {
         console.error("[containers get error]", err.message);
-        return res.status(500).json({ message: "Failed to fetch containers", error: err.message });
+        return res.status(500).json({ message: "Failed to fetch containers" });
       }
       res.json(rows);
     }
@@ -73,7 +73,7 @@ exports.syncContainers = (req, res) => {
     db.query(sql, values, (err2) => {
       if (err2) {
         console.error("[containers sync error]", err2.message);
-        return res.status(500).json({ message: "Failed to sync containers", error: err2.message });
+        return res.status(500).json({ message: "Failed to sync containers" });
       }
 
       // Update total_containers on job_entries to match count
@@ -122,7 +122,7 @@ exports.addContainer = (req, res) => {
           (err3, result) => {
             if (err3) {
               console.error("[container add error]", err3.message);
-              return res.status(500).json({ message: "Failed to add container", error: err3.message });
+              return res.status(500).json({ message: "Failed to add container" });
             }
 
             // Keep total_containers in sync
@@ -171,7 +171,7 @@ exports.updateContainer = (req, res) => {
     (err, result) => {
       if (err) {
         console.error("[container update error]", err.message);
-        return res.status(500).json({ message: "Failed to update container", error: err.message });
+        return res.status(500).json({ message: "Failed to update container" });
       }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Container not found" });
 
@@ -199,7 +199,7 @@ exports.deleteContainer = (req, res) => {
     (err, result) => {
       if (err) {
         console.error("[container delete error]", err.message);
-        return res.status(500).json({ message: "Failed to delete container", error: err.message });
+        return res.status(500).json({ message: "Failed to delete container" });
       }
       if (result.affectedRows === 0) return res.status(404).json({ message: "Container not found" });
 

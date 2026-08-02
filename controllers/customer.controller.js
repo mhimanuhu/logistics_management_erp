@@ -1,5 +1,9 @@
 const db = require("../config/db");
 
+function getIp(req) {
+  return req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
+}
+
 // ─────────────────────────────────────────────────────────
 //  GET /api/customers — List all customers
 //  Supports query params: ?status=active&company_type=customer&search=abc
@@ -41,9 +45,12 @@ exports.getCustomers = (req, res) => {
 //  GET /api/customers/:id — Get single customer
 // ─────────────────────────────────────────────────────────
 exports.getCustomerById = (req, res) => {
+  const customerId = parseInt(req.params.id, 10);
+  if (isNaN(customerId)) return res.status(400).json({ message: "Invalid customer ID" });
+
   const sql = "SELECT * FROM customers WHERE id = ?";
 
-  db.query(sql, [req.params.id], (err, results) => {
+  db.query(sql, [customerId], (err, results) => {
     if (err) {
       console.error("Fetch customer error:", err);
       return res.status(500).json({ message: "Failed to fetch customer" });
@@ -124,8 +131,8 @@ exports.createCustomer = (req, res) => {
 
     // Log action
     db.query(
-      "INSERT INTO logs (user_id, action, description) VALUES (?, ?, ?)",
-      [createdBy, "CREATE_CUSTOMER", `Created customer: ${company_name}`],
+      "INSERT INTO logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)",
+      [createdBy, "CREATE_CUSTOMER", `Created customer: ${company_name}`, getIp(req)],
       () => {}
     );
 
@@ -147,7 +154,8 @@ const CUSTOMER_UPDATEABLE_FIELDS = [
 ];
 
 exports.updateCustomer = (req, res) => {
-  const customerId = req.params.id;
+  const customerId = parseInt(req.params.id, 10);
+  if (isNaN(customerId)) return res.status(400).json({ message: "Invalid customer ID" });
   const updates = {};
 
   Object.keys(req.body).forEach((key) => {
@@ -179,8 +187,8 @@ exports.updateCustomer = (req, res) => {
 
     // Log action
     db.query(
-      "INSERT INTO logs (user_id, action, description) VALUES (?, ?, ?)",
-      [req.user.id, "UPDATE_CUSTOMER", `Updated customer ID ${customerId}`],
+      "INSERT INTO logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)",
+      [req.user.id, "UPDATE_CUSTOMER", `Updated customer ID ${customerId}`, getIp(req)],
       () => {}
     );
 
@@ -200,7 +208,8 @@ exports.deleteCustomer = (req, res) => {
     return res.status(403).json({ message: "Only SUPER_ADMIN can delete customers" });
   }
 
-  const customerId = req.params.id;
+  const customerId = parseInt(req.params.id, 10);
+  if (isNaN(customerId)) return res.status(400).json({ message: "Invalid customer ID" });
 
   // Soft-delete: set status to inactive
   const sql = "UPDATE customers SET status = 'inactive' WHERE id = ?";
@@ -217,8 +226,8 @@ exports.deleteCustomer = (req, res) => {
 
     // Log action
     db.query(
-      "INSERT INTO logs (user_id, action, description) VALUES (?, ?, ?)",
-      [req.user.id, "DELETE_CUSTOMER", `Soft-deleted customer ID ${customerId}`],
+      "INSERT INTO logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)",
+      [req.user.id, "DELETE_CUSTOMER", `Soft-deleted customer ID ${customerId}`, getIp(req)],
       () => {}
     );
 

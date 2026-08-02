@@ -1,6 +1,10 @@
 const bcrypt = require("bcryptjs");
 const db = require("../config/db");
 
+function getIp(req) {
+  return req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
+}
+
 /**
  * Role-based creation permissions:
  *   DEV_ADMIN   → can create SUPER_ADMIN, DEV_ADMIN, USER
@@ -135,13 +139,13 @@ exports.createUser = (req, res) => {
 
           // Log action
           const logSql = `
-            INSERT INTO logs (user_id, action, description)
-            VALUES (?, ?, ?)
+            INSERT INTO logs (user_id, action, description, ip_address)
+            VALUES (?, ?, ?, ?)
           `;
 
           db.query(
             logSql,
-            [creatorId, "CREATE_USER", `Created user ${email} (${roleName})`],
+            [creatorId, "CREATE_USER", `Created user ${email} (${roleName})`, getIp(req)],
             () => {}
           );
 
@@ -237,12 +241,12 @@ exports.deleteUser = (req, res) => {
 
                 // Log action
                 const logSql = `
-                  INSERT INTO logs (user_id, action, description)
-                  VALUES (?, ?, ?)
+                  INSERT INTO logs (user_id, action, description, ip_address)
+                  VALUES (?, ?, ?, ?)
                 `;
                 db.query(
                   logSql,
-                  [adminId, "DELETE_USER", `Deleted user ID ${userId}. Records transferred.`],
+                  [adminId, "DELETE_USER", `Deleted user ID ${userId}. Records transferred.`, getIp(req)],
                   () => {}
                 );
 
@@ -302,15 +306,15 @@ exports.toggleUserActive = (req, res) => {
 
       // Log action
       const logSql = `
-        INSERT INTO logs (user_id, action, description)
-        VALUES (?, ?, ?)
+        INSERT INTO logs (user_id, action, description, ip_address)
+        VALUES (?, ?, ?, ?)
       `;
 
       const actionText = newStatus === 1 ? "ACTIVATE_USER" : "DEACTIVATE_USER";
 
       db.query(
         logSql,
-        [req.user.id, actionText, `User ${userId} status changed to ${newStatus}`],
+        [req.user.id, actionText, `User ${userId} status changed to ${newStatus}`, getIp(req)],
         () => {}
       );
 
